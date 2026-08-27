@@ -18,6 +18,12 @@ import { PricingCard } from "@/components/site/pricing-card";
 import { getActivePricingPlans, getBusinessSettings } from "@/lib/settings";
 import { NotareIcon } from "@/components/brand/logo";
 
+// Reads admin-editable business settings/pricing from the database on every
+// request rather than baking them into the build — also keeps this off
+// Next's static prerender pass, which would otherwise run at build time
+// (before a database may even be reachable, e.g. a fresh Vercel deploy).
+export const dynamic = "force-dynamic";
+
 export default async function HomePage() {
   const [plans, settings] = await Promise.all([getActivePricingPlans(), getBusinessSettings()]);
 

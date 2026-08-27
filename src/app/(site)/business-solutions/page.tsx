@@ -21,6 +21,12 @@ import { PricingCard } from "@/components/site/pricing-card";
 import { BusinessInquiryForm } from "@/components/site/business-inquiry-form";
 import { getActivePricingPlans } from "@/lib/settings";
 
+// Reads admin-editable pricing plans from the database on every request
+// rather than baking them into the build — also keeps this off Next's
+// static prerender pass, which would otherwise run at build time (before a
+// database may even be reachable, e.g. a fresh Vercel deploy).
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Business Notary Solutions",
   description:

@@ -6,6 +6,12 @@ import { ComplianceNote } from "@/components/site/compliance-note";
 import { getActivePricingPlans } from "@/lib/settings";
 import { formatCents } from "@/lib/money";
 
+// Reads admin-editable pricing plans from the database on every request
+// rather than baking them into the build — also keeps this off Next's
+// static prerender pass, which would otherwise run at build time (before a
+// database may even be reachable, e.g. a fresh Vercel deploy).
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Pricing",
   description:
