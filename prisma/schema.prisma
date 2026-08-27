@@ -1,0 +1,366 @@
+// Notar-E Services — Database Schema
+// Default provider is SQLite for zero-config local development.
+// To deploy on Supabase/PostgreSQL, change `provider` below to "postgresql"
+// and set DATABASE_URL to your Postgres connection string — no model
+// changes are required (see README.md "Deploying to Postgres/Supabase").
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- Auth ----------
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String
+  createdAt    DateTime @default(now())
+}
+
+// ---------- Business configuration (singleton row, id = "default") ----------
+
+model BusinessSettings {
+  id                   String   @id @default("default")
+  businessName         String   @default("Notar-E Services")
+  phone                String   @default("(313) 555-0142")
+  email                String   @default("hello@notareservices.com")
+  serviceArea          String   @default("Metro Detroit & Southeast Michigan")
+  addressLine          String   @default("Serving Wayne, Oakland, Macomb & Washtenaw Counties")
+  logoNotes            String   @default("")
+  facebookUrl          String   @default("")
+  instagramUrl         String   @default("")
+  linkedinUrl          String   @default("")
+  googleBusinessUrl    String   @default("")
+
+  // Availability
+  appointmentDurationMinutes Int     @default(20)
+  bufferMinutes              Int     @default(10)
+  minNoticeHours             Int     @default(4)
+  maxAdvanceDays             Int     @default(60)
+  vacationMode               Boolean @default(false)
+  vacationMessage            String  @default("")
+
+  // Goal tracker
+  goalAmountCents      Int      @default(5000000) // $50,000
+  goalDeadline         DateTime @default("2027-05-31T00:00:00.000Z")
+  goalStartDate        DateTime @default(now())
+
+  // Homepage wording (editable)
+  heroHeadline         String   @default("Notarization Made Simple.")
+  heroSubheadline      String   @default("Professional Michigan notary services — when and where you need them.")
+
+  // Daily scorecard targets
+  targetBusinessesContacted Int @default(20)
+  targetCalls               Int @default(10)
+  targetEmails               Int @default(10)
+  targetFollowUps           Int @default(5)
+
+  setupCompleted       Boolean  @default(false)
+  demoDataSeeded       Boolean  @default(true)
+
+  updatedAt            DateTime @updatedAt
+}
+
+model AvailabilityRule {
+  id        String  @id @default(cuid())
+  dayOfWeek Int     // 0 = Sunday .. 6 = Saturday
+  startTime String  // "09:00"
+  endTime   String  // "19:00"
+  isActive  Boolean @default(true)
+}
+
+model BlackoutDate {
+  id     String   @id @default(cuid())
+  date   DateTime
+  reason String   @default("")
+}
+
+// ---------- Pricing (editable in admin) ----------
+
+model PricingPlan {
+  id                   String   @id @default(cuid())
+  key                  String   @unique // "individual" | "business20" | "unlimited"
+  name                 String
+  billingPeriod        String   // "one_time" | "monthly"
+  statutoryFeeCents    Int      // Michigan-compliant per-act notarial fee (max $10/act)
+  actsIncluded         Int      @default(1)
+  serviceFeeCents      Int      // travel / signing-agent / admin / handling — non-notarial
+  serviceFeeLabel      String   @default("Signing Agent & Service Fee")
+  totalCents           Int      // statutoryFeeCents*actsIncluded + serviceFeeCents (or monthly total)
+  appointmentsIncluded Int?     // null = unlimited
+  overageFeeCents      Int?     // e.g. 5000 = $50 per additional appointment
+  description          String
+  features             String   // JSON array of strings
+  highlight            Boolean  @default(false)
+  sortOrder            Int      @default(0)
+  isActive             Boolean  @default(true)
+  updatedAt            DateTime @updatedAt
+}
+
+// ---------- CRM ----------
+
+model Client {
+  id                  String    @id @default(cuid())
+  name                String
+  company             String    @default("")
+  email               String    @default("")
+  phone               String    @default("")
+  clientType          String    @default("individual") // individual | realtor | title | mortgage | law_firm | property_mgmt | dealership | financial | healthcare | small_business | other
+  firstAppointmentDate DateTime?
+  lastAppointmentDate  DateTime?
+  totalAppointments    Int       @default(0)
+  totalRevenueCents    Int       @default(0)
+  currentPackage       String    @default("")
+  amountOwedCents      Int       @default(0)
+  notes                String    @default("")
+  followUpDate         DateTime?
+  leadStatus           String    @default("new_lead") // new_lead|contacted|interested|proposal_sent|active_client|recurring_client|inactive|lost
+  leadSource           String    @default("website")
+  isDemo               Boolean   @default(false)
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  appointments Appointment[]
+  invoices     Invoice[]
+}
+
+model Business {
+  id                String    @id @default(cuid())
+  companyName       String
+  category          String    // title_company|mortgage_company|real_estate_brokerage|real_estate_agent|law_firm|property_management|dealership|bank_credit_union|healthcare|senior_living|small_business|other
+  contactName       String    @default("")
+  email             String    @default("")
+  phone             String    @default("")
+  packageKey        String    @default("") // links to PricingPlan.key
+  monthlyUsage      Int       @default(0)
+  monthlyRevenueCents Int     @default(0)
+  contractStart     DateTime?
+  renewalDate       DateTime?
+  status            String    @default("lead") // lead|active|inactive
+  notes             String    @default("")
+  followUpDate      DateTime?
+  leadSource        String    @default("outreach")
+  isDemo            Boolean   @default(false)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  appointments Appointment[]
+  invoices     Invoice[]
+}
+
+// ---------- Scheduling ----------
+
+model Appointment {
+  id                 String    @id @default(cuid())
+  confirmationNumber String    @unique
+  type               String    @default("in_person") // in_person | remote
+  status             String    @default("scheduled")  // scheduled|completed|cancelled|no_show
+  paymentStatus      String    @default("unpaid")      // unpaid|paid
+  paymentMethod      String    @default("")             // card|cash|check|invoice|ach
+
+  clientId   String?
+  client     Client?   @relation(fields: [clientId], references: [id])
+  businessId String?
+  business   Business? @relation(fields: [businessId], references: [id])
+
+  clientName  String
+  company     String   @default("")
+  email       String   @default("")
+  phone       String   @default("")
+  address     String   @default("")
+
+  serviceType   String @default("General Notary")
+  documentType  String @default("")
+  numberOfActs  Int    @default(1)
+
+  statutoryFeeCents Int @default(1000)
+  travelFeeCents    Int @default(0)
+  otherFeesCents    Int @default(0)
+  totalAmountCents  Int @default(1000)
+
+  scheduledStart DateTime
+  scheduledEnd   DateTime
+
+  notes         String    @default("")
+  followUpDate  DateTime?
+
+  isRecurring    Boolean @default(false)
+  recurrenceRule String  @default("") // "weekly" | "biweekly" | "monthly"
+
+  source String @default("admin") // admin | public_booking
+  isDemo Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  revenueEntries RevenueEntry[]
+  mileageLogs    MileageLog[]
+}
+
+// ---------- Sales pipeline & outreach ----------
+
+model PipelineOpportunity {
+  id                  String    @id @default(cuid())
+  businessName        String
+  contactName         String    @default("")
+  category            String    @default("other")
+  stage               String    @default("lead") // lead|contacted|meeting_scheduled|proposal_sent|negotiating|won|lost
+  potentialMonthlyCents Int     @default(0)
+  probability         Int       @default(20)
+  expectedCloseDate   DateTime?
+  notes               String    @default("")
+  sortOrder           Int       @default(0)
+  isDemo              Boolean   @default(false)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+}
+
+model OutreachLog {
+  id           String    @id @default(cuid())
+  businessName String
+  contactName  String    @default("")
+  phone        String    @default("")
+  email        String    @default("")
+  companyType  String    @default("other")
+  dateContacted DateTime @default(now())
+  method       String    @default("call") // call|email|text|in_person
+  response     String    @default("no_response") // no_response|interested|not_interested|callback|voicemail
+  followUpDate DateTime?
+  notes        String    @default("")
+  status       String    @default("new") // new|follow_up|meeting_booked|won|lost
+  isDemo       Boolean   @default(false)
+  createdAt    DateTime  @default(now())
+}
+
+// ---------- Daily scorecard ----------
+
+model ScorecardEntry {
+  id                  String   @id @default(cuid())
+  date                DateTime @unique
+  businessesContacted Int      @default(0)
+  calls               Int      @default(0)
+  emails              Int      @default(0)
+  followUps           Int      @default(0)
+  socialPostDone      Boolean  @default(false)
+  appointmentsCompleted Int    @default(0)
+  revenueCents        Int      @default(0)
+  leadsGenerated      Int      @default(0)
+  isDemo              Boolean  @default(false)
+}
+
+// ---------- Money ----------
+
+model RevenueEntry {
+  id            String   @id @default(cuid())
+  date          DateTime @default(now())
+  amountCents   Int
+  source        String   @default("manual") // manual|appointment|subscription|invoice
+  description   String   @default("")
+  appointmentId String?
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id])
+  isDemo        Boolean  @default(false)
+  createdAt     DateTime @default(now())
+}
+
+model Expense {
+  id          String   @id @default(cuid())
+  date        DateTime @default(now())
+  description String
+  category    String   // gas|mileage|printing|paper|ink|marketing|advertising|website|software|notary_supplies|insurance|phone|office_supplies|professional_services|other
+  vendor      String   @default("")
+  amountCents Int
+  notes       String   @default("")
+  isDemo      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+model MileageLog {
+  id              String   @id @default(cuid())
+  date            DateTime @default(now())
+  startLocation   String
+  destination     String
+  purpose         String   @default("")
+  miles           Float
+  clientName      String   @default("")
+  appointmentId   String?
+  appointment     Appointment? @relation(fields: [appointmentId], references: [id])
+  isDemo          Boolean  @default(false)
+  createdAt       DateTime @default(now())
+}
+
+model Invoice {
+  id            String   @id @default(cuid())
+  invoiceNumber String   @unique
+  clientId      String?
+  client        Client?  @relation(fields: [clientId], references: [id])
+  businessId    String?
+  business      Business? @relation(fields: [businessId], references: [id])
+  clientName    String
+  company       String   @default("")
+  issueDate     DateTime @default(now())
+  dueDate       DateTime
+  status        String   @default("draft") // draft|sent|paid|overdue|cancelled
+  notes         String   @default("")
+  isDemo        Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  items InvoiceItem[]
+}
+
+model InvoiceItem {
+  id             String  @id @default(cuid())
+  invoiceId      String
+  invoice        Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  description    String
+  type           String  @default("other_service") // statutory_fee | other_service
+  quantity       Int     @default(1)
+  unitAmountCents Int
+  amountCents    Int
+}
+
+// ---------- Growth tools ----------
+
+model SavedScenario {
+  id         String   @id @default(cuid())
+  name       String
+  inputsJson String   // JSON blob of calculator inputs
+  createdAt  DateTime @default(now())
+}
+
+model MilestoneAchievement {
+  id          String   @id @default(cuid())
+  amountCents Int      @unique
+  achievedAt  DateTime @default(now())
+  seen        Boolean  @default(false)
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  type      String   // appointment_upcoming|follow_up_due|invoice_unpaid|goal_milestone|renewal|new_booking
+  title     String
+  body      String   @default("")
+  link      String   @default("")
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model LeadCapture {
+  id                 String   @id @default(cuid())
+  name               String
+  company             String  @default("")
+  email              String
+  phone              String  @default("")
+  serviceNeeded      String  @default("")
+  message            String  @default("")
+  estimatedAppointmentsPerMonth String @default("")
+  isBusinessLead     Boolean  @default(false)
+  handled            Boolean  @default(false)
+  createdAt          DateTime @default(now())
+}
