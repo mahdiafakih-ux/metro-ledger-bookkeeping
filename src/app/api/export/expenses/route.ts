@@ -1,9 +1,14 @@
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { toCsv, csvResponse } from "@/lib/csv";
 import { EXPENSE_CATEGORY_LABELS } from "@/lib/constants";
 import { formatDate } from "@/lib/utils";
+import { requireAdminSession } from "@/lib/auth";
 
 export async function GET() {
+  const session = await requireAdminSession();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const rows = await prisma.expense.findMany({ orderBy: { date: "desc" } });
   const csv = toCsv(rows, [
     { header: "Date", value: (r) => formatDate(r.date) },

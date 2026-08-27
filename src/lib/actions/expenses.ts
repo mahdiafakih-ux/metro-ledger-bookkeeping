@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { dollarsToCents } from "@/lib/money";
+import { requireAdminSession } from "@/lib/auth";
 
 export interface ExpenseInput {
   date: string;
@@ -14,6 +15,9 @@ export interface ExpenseInput {
 }
 
 export async function createExpense(input: ExpenseInput) {
+  const session = await requireAdminSession();
+  if (!session) return { success: false as const, error: "Unauthorized" };
+
   await prisma.expense.create({
     data: {
       date: new Date(input.date),
@@ -29,6 +33,9 @@ export async function createExpense(input: ExpenseInput) {
 }
 
 export async function deleteExpense(id: string) {
+  const session = await requireAdminSession();
+  if (!session) return { success: false as const, error: "Unauthorized" };
+
   await prisma.expense.delete({ where: { id } });
   revalidatePath("/admin/expenses");
   return { success: true };

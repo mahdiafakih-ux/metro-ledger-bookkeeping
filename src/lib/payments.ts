@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/db";
 import { getTotalEarnedCents } from "@/lib/queries/dashboard";
-import { checkAndRecordMilestones } from "@/lib/actions/revenue";
+import { checkAndRecordMilestones } from "@/lib/milestones";
 import { createNotification } from "@/lib/actions/notifications";
 
 /**

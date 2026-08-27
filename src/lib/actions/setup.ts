@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/db";
 import { dollarsToCents } from "@/lib/money";
+import { requireAdminSession } from "@/lib/auth";
 
 export interface SetupInput {
   businessName: string;
@@ -17,6 +18,12 @@ export interface SetupInput {
 }
 
 export async function completeSetup(input: SetupInput) {
+  const session = await requireAdminSession();
+  if (!session) return { success: false, error: "Unauthorized" };
+
+  const existing = await prisma.businessSettings.findUnique({ where: { id: "default" } });
+  if (existing?.setupCompleted) return { success: false, error: "Setup has already been completed" };
+
   await prisma.businessSettings.update({
     where: { id: "default" },
     data: {

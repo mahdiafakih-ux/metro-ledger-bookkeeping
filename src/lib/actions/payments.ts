@@ -5,6 +5,7 @@ import { getStripeClient, getSiteUrl } from "@/lib/stripe";
 import { requireAdminSession } from "@/lib/auth";
 import { recordRefund } from "@/lib/payments";
 import { revalidatePath } from "next/cache";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 export interface CheckoutResult {
   success: boolean;
@@ -19,6 +20,10 @@ export interface CheckoutResult {
  * fee."
  */
 export async function createAppointmentCheckoutSession(appointmentId: string): Promise<CheckoutResult> {
+  const ip = await getClientIp();
+  const { allowed } = rateLimit(`checkout:${ip}:${appointmentId}`, 10, 10 * 60 * 1000);
+  if (!allowed) return { success: false, error: "Too many attempts. Please wait a few minutes and try again." };
+
   const stripe = getStripeClient();
   if (!stripe) return { success: false, error: "Online payment is not configured yet. Please pay at your appointment." };
 
@@ -87,6 +92,10 @@ export async function createAppointmentCheckoutSession(appointmentId: string): P
 
 /** Builds a Stripe Checkout session for an invoice — usable from the public, unauthenticated invoice-pay page. */
 export async function createInvoiceCheckoutSession(invoiceId: string): Promise<CheckoutResult> {
+  const ip = await getClientIp();
+  const { allowed } = rateLimit(`checkout:${ip}:${invoiceId}`, 10, 10 * 60 * 1000);
+  if (!allowed) return { success: false, error: "Too many attempts. Please wait a few minutes and try again." };
+
   const stripe = getStripeClient();
   if (!stripe) return { success: false, error: "Online payment is not configured yet." };
 

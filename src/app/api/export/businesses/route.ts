@@ -1,9 +1,14 @@
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { toCsv, csvResponse } from "@/lib/csv";
 import { BUSINESS_CATEGORY_LABELS } from "@/lib/constants";
 import { formatDate, titleCase } from "@/lib/utils";
+import { requireAdminSession } from "@/lib/auth";
 
 export async function GET() {
+  const session = await requireAdminSession();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const rows = await prisma.business.findMany({ orderBy: { createdAt: "desc" } });
   const csv = toCsv(rows, [
     { header: "Company", value: (r) => r.companyName },

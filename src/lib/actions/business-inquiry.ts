@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/db";
 import { businessInquirySchema } from "@/lib/validation";
 import { createNotification } from "@/lib/actions/notifications";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 export interface BusinessInquiryResult {
   success: boolean;
@@ -16,6 +17,10 @@ export interface BusinessInquiryResult {
  * CRM and sales pipeline for follow-up.
  */
 export async function submitBusinessInquiry(input: unknown): Promise<BusinessInquiryResult> {
+  const ip = await getClientIp();
+  const { allowed } = rateLimit(`business-inquiry:${ip}`, 5, 60 * 60 * 1000);
+  if (!allowed) return { success: false, error: "Too many submissions. Please try again later or call us directly." };
+
   const parsed = businessInquirySchema.safeParse(input);
   if (!parsed.success) {
     return { success: false, error: parsed.error.issues[0]?.message ?? "Please check your input." };

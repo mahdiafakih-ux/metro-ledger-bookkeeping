@@ -1,8 +1,13 @@
+import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { toCsv, csvResponse } from "@/lib/csv";
 import { formatDateTime, titleCase } from "@/lib/utils";
+import { requireAdminSession } from "@/lib/auth";
 
 export async function GET() {
+  const session = await requireAdminSession();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
   const rows = await prisma.appointment.findMany({ orderBy: { scheduledStart: "desc" } });
   const csv = toCsv(rows, [
     { header: "Confirmation #", value: (r) => r.confirmationNumber },

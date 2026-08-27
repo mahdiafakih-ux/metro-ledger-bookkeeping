@@ -6,6 +6,7 @@ import { bookingSchema, type BookingInput } from "@/lib/validation";
 import { generateConfirmationNumber } from "@/lib/utils";
 import { getOpenSlotsForDate } from "@/lib/availability";
 import { createNotification } from "@/lib/actions/notifications";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 export async function getAvailableSlotsAction(dateISO: string) {
   return getOpenSlotsForDate(dateISO);
@@ -22,6 +23,10 @@ export interface BookingResult {
 const SLOT_TAKEN_ERROR = "That time slot is no longer available. Please choose another.";
 
 export async function submitBooking(input: BookingInput): Promise<BookingResult> {
+  const ip = await getClientIp();
+  const { allowed } = rateLimit(`booking:${ip}`, 8, 60 * 60 * 1000);
+  if (!allowed) return { success: false, error: "Too many booking attempts. Please try again in a bit, or call us directly." };
+
   const parsed = bookingSchema.safeParse(input);
   if (!parsed.success) {
     return { success: false, error: parsed.data ? "Invalid input" : parsed.error.issues[0]?.message ?? "Invalid input" };
