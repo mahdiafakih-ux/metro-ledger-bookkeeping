@@ -61,7 +61,10 @@ export function computeGoalStats(input: GoalStatsInput): GoalStats {
     : 0;
 
   const totalDays = Math.max(daysBetween(goalStartDate, goalDeadline), 1);
-  const daysElapsed = Math.max(daysBetween(goalStartDate, now), 0.0001);
+  // Floored at a full day (not a fraction) so a goalStartDate of "just now" combined
+  // with pre-existing revenue (demo data, backdated entries) can't produce a wild
+  // divide-by-near-zero pace and an absurd extrapolated projection.
+  const daysElapsed = Math.max(daysBetween(goalStartDate, now), 1);
   const daysRemaining = Math.max(daysBetween(now, goalDeadline), 0);
 
   const monthsRemaining = Math.max(daysRemaining / 30.44, 0.001);

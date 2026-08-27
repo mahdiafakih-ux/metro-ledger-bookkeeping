@@ -45,7 +45,10 @@ export async function getGoalTrajectorySeries(input: {
 
   const totalDays = Math.max((goalDeadline.getTime() - goalStartDate.getTime()) / MS_PER_DAY, 1);
   const actualAtNow = cumulativeThrough(now);
-  const daysElapsed = Math.max((now.getTime() - goalStartDate.getTime()) / MS_PER_DAY, 0.0001);
+  // Floored at a full day so a goalStartDate of "just now" plus pre-existing revenue
+  // (demo data, backdated entries) can't divide by a near-zero denominator and
+  // extrapolate an absurd projected path — see the matching fix in lib/goal.ts.
+  const daysElapsed = Math.max((now.getTime() - goalStartDate.getTime()) / MS_PER_DAY, 1);
   const currentPaceCentsPerDay = actualAtNow / daysElapsed;
 
   // Build one point per month from start to deadline (inclusive), capped at ~24 points.
