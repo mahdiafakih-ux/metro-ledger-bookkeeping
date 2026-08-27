@@ -39,7 +39,12 @@ export default async function AppointmentDetailPage({ params }: { params: Promis
       <Card>
         <CardHeader><CardTitle>Quick Actions</CardTitle></CardHeader>
         <CardBody>
-          <AppointmentActions id={appointment.id} status={appointment.status} paymentStatus={appointment.paymentStatus} />
+          <AppointmentActions
+            id={appointment.id}
+            status={appointment.status}
+            paymentStatus={appointment.paymentStatus}
+            balanceDueCents={appointment.totalAmountCents - appointment.amountPaidCents}
+          />
         </CardBody>
       </Card>
 

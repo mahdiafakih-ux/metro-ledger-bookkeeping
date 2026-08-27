@@ -1,15 +1,13 @@
 // Notar-E Services — Database Schema
-// Default provider is SQLite for zero-config local development.
-// To deploy on Supabase/PostgreSQL, change `provider` below to "postgresql"
-// and set DATABASE_URL to your Postgres connection string — no model
-// changes are required (see README.md "Deploying to Postgres/Supabase").
+// Production datasource is PostgreSQL (Supabase). See README.md for local
+// development setup (a local Postgres instance or a free Supabase project).
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -55,11 +53,14 @@ model BusinessSettings {
   heroHeadline         String   @default("Notarization Made Simple.")
   heroSubheadline      String   @default("Professional Michigan notary services — when and where you need them.")
 
-  // Daily scorecard targets
+  // Daily scorecard / outreach targets
   targetBusinessesContacted Int @default(20)
   targetCalls               Int @default(10)
   targetEmails               Int @default(10)
   targetFollowUps           Int @default(5)
+
+  // Invoicing
+  taxRatePercent       Float    @default(0)
 
   setupCompleted       Boolean  @default(false)
   demoDataSeeded       Boolean  @default(true)
@@ -79,6 +80,16 @@ model BlackoutDate {
   id     String   @id @default(cuid())
   date   DateTime
   reason String   @default("")
+}
+
+// Admin-created manual holds on the calendar (e.g. "out of office 2-4pm") —
+// these occupy slots the same way appointments do, without being a booking.
+model AdminBlock {
+  id        String   @id @default(cuid())
+  startTime DateTime
+  endTime   DateTime
+  reason    String   @default("")
+  createdAt DateTime @default(now())
 }
 
 // ---------- Pricing (editable in admin) ----------
@@ -131,27 +142,38 @@ model Client {
 }
 
 model Business {
-  id                String    @id @default(cuid())
-  companyName       String
-  category          String    // title_company|mortgage_company|real_estate_brokerage|real_estate_agent|law_firm|property_management|dealership|bank_credit_union|healthcare|senior_living|small_business|other
-  contactName       String    @default("")
-  email             String    @default("")
-  phone             String    @default("")
-  packageKey        String    @default("") // links to PricingPlan.key
-  monthlyUsage      Int       @default(0)
-  monthlyRevenueCents Int     @default(0)
-  contractStart     DateTime?
-  renewalDate       DateTime?
-  status            String    @default("lead") // lead|active|inactive
-  notes             String    @default("")
-  followUpDate      DateTime?
-  leadSource        String    @default("outreach")
-  isDemo            Boolean   @default(false)
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  id                  String    @id @default(cuid())
+  companyName         String
+  category            String    // title_company|mortgage_company|real_estate_brokerage|real_estate_agent|law_firm|property_management|dealership|bank_credit_union|healthcare|senior_living|small_business|other
+  contactName         String    @default("")
+  email               String    @default("")
+  phone               String    @default("")
 
-  appointments Appointment[]
-  invoices     Invoice[]
+  // Billing contact (may differ from primary contact)
+  billingContactName  String    @default("")
+  billingContactEmail String    @default("")
+  billingContactPhone String    @default("")
+
+  packageKey          String    @default("") // links to PricingPlan.key
+  monthlyUsage        Int       @default(0)
+  monthlyRevenueCents Int       @default(0)
+  expectedMonthlyVolume Int     @default(0) // appointments/month expected, captured at inquiry
+  customPricingNotes  String    @default("") // free-text custom pricing agreement notes
+
+  contractStart       DateTime?
+  contractEndDate     DateTime?
+  renewalDate         DateTime?
+  status              String    @default("lead") // lead|active|inactive
+  notes               String    @default("")
+  followUpDate        DateTime?
+  leadSource          String    @default("outreach")
+  isDemo              Boolean   @default(false)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  appointments  Appointment[]
+  invoices      Invoice[]
+  opportunities PipelineOpportunity[]
 }
 
 // ---------- Scheduling ----------
@@ -161,7 +183,7 @@ model Appointment {
   confirmationNumber String    @unique
   type               String    @default("in_person") // in_person | remote
   status             String    @default("scheduled")  // scheduled|completed|cancelled|no_show
-  paymentStatus      String    @default("unpaid")      // unpaid|paid
+  paymentStatus      String    @default("unpaid")      // unpaid|pending|partially_paid|paid|refunded|failed
   paymentMethod      String    @default("")             // card|cash|check|invoice|ach
 
   clientId   String?
@@ -183,12 +205,14 @@ model Appointment {
   travelFeeCents    Int @default(0)
   otherFeesCents    Int @default(0)
   totalAmountCents  Int @default(1000)
+  amountPaidCents   Int @default(0)
 
   scheduledStart DateTime
   scheduledEnd   DateTime
 
   notes         String    @default("")
   followUpDate  DateTime?
+  reminderSentAt DateTime?
 
   isRecurring    Boolean @default(false)
   recurrenceRule String  @default("") // "weekly" | "biweekly" | "monthly"
@@ -196,11 +220,15 @@ model Appointment {
   source String @default("admin") // admin | public_booking
   isDemo Boolean @default(false)
 
+  stripeCheckoutSessionId String @default("")
+  stripePaymentIntentId   String @default("")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   revenueEntries RevenueEntry[]
   mileageLogs    MileageLog[]
+  payments       Payment[]
 }
 
 // ---------- Sales pipeline & outreach ----------
@@ -210,15 +238,23 @@ model PipelineOpportunity {
   businessName        String
   contactName         String    @default("")
   category            String    @default("other")
-  stage               String    @default("lead") // lead|contacted|meeting_scheduled|proposal_sent|negotiating|won|lost
+  stage               String    @default("new_lead") // new_lead|contacted|follow_up|interested|meeting_scheduled|proposal_sent|negotiating|won|lost
   potentialMonthlyCents Int     @default(0)
+  dealValueCents      Int       @default(0) // one-time / contract value, distinct from recurring monthly potential
   probability         Int       @default(20)
+  nextAction          String    @default("")
+  nextFollowUpDate    DateTime?
+  contactAttempts     Int       @default(0)
+  lostReason          String    @default("")
   expectedCloseDate   DateTime?
   notes               String    @default("")
   sortOrder           Int       @default(0)
   isDemo              Boolean   @default(false)
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
+
+  businessId String?
+  business   Business? @relation(fields: [businessId], references: [id])
 }
 
 model OutreachLog {
@@ -229,7 +265,7 @@ model OutreachLog {
   email        String    @default("")
   companyType  String    @default("other")
   dateContacted DateTime @default(now())
-  method       String    @default("call") // call|email|text|in_person
+  method       String    @default("call") // call|email|text|walk_in|linkedin|referral|meeting|proposal
   response     String    @default("no_response") // no_response|interested|not_interested|callback|voicemail
   followUpDate DateTime?
   notes        String    @default("")
@@ -260,10 +296,12 @@ model RevenueEntry {
   id            String   @id @default(cuid())
   date          DateTime @default(now())
   amountCents   Int
-  source        String   @default("manual") // manual|appointment|subscription|invoice
+  source        String   @default("manual") // manual|appointment|subscription|invoice|refund
   description   String   @default("")
   appointmentId String?
   appointment   Appointment? @relation(fields: [appointmentId], references: [id])
+  invoiceId     String?
+  invoice       Invoice? @relation(fields: [invoiceId], references: [id])
   isDemo        Boolean  @default(false)
   createdAt     DateTime @default(now())
 }
@@ -303,15 +341,24 @@ model Invoice {
   business      Business? @relation(fields: [businessId], references: [id])
   clientName    String
   company       String   @default("")
+  email         String   @default("")
   issueDate     DateTime @default(now())
   dueDate       DateTime
-  status        String   @default("draft") // draft|sent|paid|overdue|cancelled
+  status        String   @default("draft") // draft|sent|paid|partially_paid|overdue|cancelled|refunded
+  taxCents      Int      @default(0)
+  amountPaidCents Int    @default(0)
   notes         String   @default("")
   isDemo        Boolean  @default(false)
+
+  stripePaymentLinkUrl    String @default("")
+  stripeCheckoutSessionId String @default("")
+
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  items InvoiceItem[]
+  items         InvoiceItem[]
+  payments      Payment[]
+  revenueEntries RevenueEntry[]
 }
 
 model InvoiceItem {
@@ -323,6 +370,26 @@ model InvoiceItem {
   quantity       Int     @default(1)
   unitAmountCents Int
   amountCents    Int
+}
+
+// A single payment/refund event — powers partial payments, receipts, and
+// the admin refund flow. Linked to either an Appointment or an Invoice.
+model Payment {
+  id            String   @id @default(cuid())
+  appointmentId String?
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  invoiceId     String?
+  invoice       Invoice? @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  amountCents   Int
+  method        String   @default("stripe") // stripe|cash|check|ach|other
+  status        String   @default("succeeded") // pending|succeeded|refunded|failed
+
+  stripePaymentIntentId String @default("")
+  stripeChargeId        String @default("")
+  stripeRefundId         String @default("")
+
+  createdAt     DateTime @default(now())
 }
 
 // ---------- Growth tools ----------
@@ -343,7 +410,7 @@ model MilestoneAchievement {
 
 model Notification {
   id        String   @id @default(cuid())
-  type      String   // appointment_upcoming|follow_up_due|invoice_unpaid|goal_milestone|renewal|new_booking
+  type      String   // appointment_upcoming|follow_up_due|invoice_unpaid|goal_milestone|renewal|new_booking|payment_received
   title     String
   body      String   @default("")
   link      String   @default("")
@@ -358,6 +425,7 @@ model LeadCapture {
   email              String
   phone              String  @default("")
   serviceNeeded      String  @default("")
+  businessCategory   String  @default("")
   message            String  @default("")
   estimatedAppointmentsPerMonth String @default("")
   isBusinessLead     Boolean  @default(false)

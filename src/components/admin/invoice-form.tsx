@@ -10,8 +10,8 @@ import { createInvoice, type InvoiceInput, type InvoiceItemInput } from "@/lib/a
 import { INVOICE_STATUSES } from "@/lib/constants";
 import { titleCase } from "@/lib/utils";
 
-interface ClientOption { id: string; name: string; company: string }
-interface BusinessOption { id: string; companyName: string; contactName: string }
+interface ClientOption { id: string; name: string; company: string; email: string }
+interface BusinessOption { id: string; companyName: string; contactName: string; email: string }
 
 export function InvoiceForm({ clients, businesses }: { clients: ClientOption[]; businesses: BusinessOption[] }) {
   const router = useRouter();
@@ -20,6 +20,8 @@ export function InvoiceForm({ clients, businesses }: { clients: ClientOption[]; 
   const [businessId, setBusinessId] = useState("");
   const [clientName, setClientName] = useState("");
   const [company, setCompany] = useState("");
+  const [email, setEmail] = useState("");
+  const [taxDollars, setTaxDollars] = useState(0);
   const [issueDate, setIssueDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [dueDate, setDueDate] = useState(() => {
     const d = new Date();
@@ -42,7 +44,7 @@ export function InvoiceForm({ clients, businesses }: { clients: ClientOption[]; 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
-    const input: InvoiceInput = { clientId: clientId || undefined, businessId: businessId || undefined, clientName, company, issueDate, dueDate, status, notes, items };
+    const input: InvoiceInput = { clientId: clientId || undefined, businessId: businessId || undefined, clientName, company, email, issueDate, dueDate, status, taxDollars, notes, items };
     const res = await createInvoice(input);
     setSaving(false);
     if (!res.success) { toast.error("Could not create invoice"); return; }
@@ -58,7 +60,7 @@ export function InvoiceForm({ clients, businesses }: { clients: ClientOption[]; 
           <Select value={clientId} onChange={(e) => {
             setClientId(e.target.value); setBusinessId("");
             const c = clients.find((x) => x.id === e.target.value);
-            if (c) { setClientName(c.name); setCompany(c.company); }
+            if (c) { setClientName(c.name); setCompany(c.company); setEmail(c.email); }
           }}>
             <option value="">— None —</option>
             {clients.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -68,7 +70,7 @@ export function InvoiceForm({ clients, businesses }: { clients: ClientOption[]; 
           <Select value={businessId} onChange={(e) => {
             setBusinessId(e.target.value); setClientId("");
             const b = businesses.find((x) => x.id === e.target.value);
-            if (b) { setClientName(b.contactName || b.companyName); setCompany(b.companyName); }
+            if (b) { setClientName(b.contactName || b.companyName); setCompany(b.companyName); setEmail(b.email); }
           }}>
             <option value="">— None —</option>
             {businesses.map((b) => <option key={b.id} value={b.id}>{b.companyName}</option>)}
@@ -76,13 +78,14 @@ export function InvoiceForm({ clients, businesses }: { clients: ClientOption[]; 
         </FormField>
         <FormField label="Bill To (Name)"><Input required value={clientName} onChange={(e) => setClientName(e.target.value)} /></FormField>
         <FormField label="Company"><Input value={company} onChange={(e) => setCompany(e.target.value)} /></FormField>
-        <FormField label="Issue Date"><Input type="date" value={issueDate} onChange={(e) => setIssueDate(e.target.value)} /></FormField>
-        <FormField label="Due Date"><Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} /></FormField>
+        <FormField label="Email" hint="Where the payment link/invoice can be sent"><Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></FormField>
         <FormField label="Status">
           <Select value={status} onChange={(e) => setStatus(e.target.value)}>
             {INVOICE_STATUSES.map((s) => <option key={s} value={s}>{titleCase(s)}</option>)}
           </Select>
         </FormField>
+        <FormField label="Issue Date"><Input type="date" value={issueDate} onChange={(e) => setIssueDate(e.target.value)} /></FormField>
+        <FormField label="Due Date"><Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} /></FormField>
       </div>
 
       <div>
@@ -108,8 +111,9 @@ export function InvoiceForm({ clients, businesses }: { clients: ClientOption[]; 
             </div>
           ))}
         </div>
-        <div className="mt-3 flex justify-end">
-          <p className="text-lg font-bold text-navy-900">Total: ${total.toFixed(2)}</p>
+        <div className="mt-3 flex items-center justify-end gap-4">
+          <FormField label="Tax ($)"><Input type="number" min={0} step="0.01" value={taxDollars} onChange={(e) => setTaxDollars(Number(e.target.value))} className="w-28" /></FormField>
+          <p className="text-lg font-bold text-navy-900">Total: ${(total + taxDollars).toFixed(2)}</p>
         </div>
       </div>
 

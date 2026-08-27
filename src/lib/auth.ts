@@ -69,3 +69,24 @@ export async function getSession(): Promise<SessionPayload | null> {
 }
 
 export const SESSION_COOKIE_NAME = COOKIE_NAME;
+
+/**
+ * Authorization guard for Server Actions that mutate business data.
+ *
+ * Next.js Server Actions are independently invocable server endpoints —
+ * a valid session cookie on the *page* that loaded them is not, by itself,
+ * a guarantee the mutation is authorized, since action references can end
+ * up in shared client bundles. Every Server Action that writes sensitive
+ * data (anything other than the intentionally public booking/lead/payment
+ * entry points) must call this first and bail out on `null`.
+ */
+export async function requireAdminSession(): Promise<SessionPayload | null> {
+  return getSession();
+}
+
+export class UnauthorizedError extends Error {
+  constructor() {
+    super("Unauthorized");
+    this.name = "UnauthorizedError";
+  }
+}

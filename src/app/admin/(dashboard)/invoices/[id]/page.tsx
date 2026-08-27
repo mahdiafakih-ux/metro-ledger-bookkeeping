@@ -18,13 +18,20 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
   const statutoryItems = invoice.items.filter((i) => i.type === "statutory_fee");
   const otherItems = invoice.items.filter((i) => i.type !== "statutory_fee");
   const subtotal = invoice.items.reduce((sum, i) => sum + i.amountCents, 0);
+  const total = subtotal + invoice.taxCents;
+  const balanceDueCents = total - invoice.amountPaidCents;
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <div className="no-print flex items-center justify-between">
+      <div className="no-print flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold text-navy-900">Invoice {invoice.invoiceNumber}</h1>
-        <InvoiceActions id={invoice.id} status={invoice.status} />
+        <InvoiceActions id={invoice.id} status={invoice.status} balanceDueCents={balanceDueCents} hasEmail={!!invoice.email} />
       </div>
+      {invoice.stripePaymentLinkUrl && balanceDueCents > 0 && (
+        <p className="no-print text-sm text-navy-500">
+          Public payment page: <a href={`/invoice/${invoice.id}`} target="_blank" className="font-medium text-accent-600 hover:underline">notareservices.com/invoice/{invoice.id}</a>
+        </p>
+      )}
 
       <div className="rounded-2xl border border-navy-100 bg-white p-8 sm:p-10 print:border-0 print:p-0 print:shadow-none">
         <div className="flex items-start justify-between">
@@ -91,9 +98,12 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
         </table>
 
         <div className="mt-4 flex justify-end">
-          <div className="w-56 space-y-1.5">
+          <div className="w-64 space-y-1.5">
             <div className="flex justify-between text-sm"><span className="text-navy-500">Subtotal</span><span className="font-medium text-navy-800">{formatCents(subtotal)}</span></div>
-            <div className="flex justify-between border-t border-navy-200 pt-1.5 text-base font-bold"><span className="text-navy-900">Total</span><span className="text-navy-900">{formatCents(subtotal)}</span></div>
+            {invoice.taxCents > 0 && <div className="flex justify-between text-sm"><span className="text-navy-500">Tax</span><span className="font-medium text-navy-800">{formatCents(invoice.taxCents)}</span></div>}
+            <div className="flex justify-between border-t border-navy-200 pt-1.5 text-base font-bold"><span className="text-navy-900">Total</span><span className="text-navy-900">{formatCents(total)}</span></div>
+            {invoice.amountPaidCents > 0 && <div className="flex justify-between text-sm"><span className="text-navy-500">Paid</span><span className="font-medium text-success-600">−{formatCents(invoice.amountPaidCents)}</span></div>}
+            <div className="flex justify-between text-base font-bold"><span className="text-navy-900">Balance Due</span><span className={balanceDueCents > 0 ? "text-danger-600" : "text-success-600"}>{formatCents(Math.max(0, balanceDueCents))}</span></div>
           </div>
         </div>
 

@@ -24,7 +24,7 @@ export async function submitLead(input: unknown): Promise<LeadResult> {
         businessName: data.company || data.name,
         contactName: data.name,
         category: "other",
-        stage: "lead",
+        stage: "new_lead",
         potentialMonthlyCents: 0,
         probability: 15,
         notes: `Website inquiry: ${data.message}${data.estimatedAppointmentsPerMonth ? ` | Est. appts/mo: ${data.estimatedAppointmentsPerMonth}` : ""}`,
@@ -38,6 +38,11 @@ export async function submitLead(input: unknown): Promise<LeadResult> {
     body: `${data.name}${data.company ? ` (${data.company})` : ""} — ${data.serviceNeeded || "General inquiry"}`,
     link: "/admin/outreach",
   });
+
+  if (data.email) {
+    const { sendBusinessLeadConfirmationEmail } = await import("@/lib/email");
+    await sendBusinessLeadConfirmationEmail({ to: data.email, name: data.name, company: data.company });
+  }
 
   return { success: true };
 }

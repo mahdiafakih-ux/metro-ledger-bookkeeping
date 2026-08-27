@@ -27,3 +27,15 @@ export const contactSchema = z.object({
   estimatedAppointmentsPerMonth: z.string().optional().default(""),
   isBusinessLead: z.coerce.boolean().optional().default(false),
 });
+
+export const businessInquirySchema = z.object({
+  companyName: z.string().min(2, "Please enter your company name"),
+  category: z.string().min(1),
+  contactName: z.string().min(2, "Please enter your name"),
+  email: z.string().email("Please enter a valid email address"),
+  phone: z.string().min(7, "Please enter a valid phone number"),
+  expectedMonthlyVolume: z.coerce.number().int().min(0).max(1000),
+  message: z.string().optional().default(""),
+});
+
+export type BusinessInquiryInput = z.infer<typeof businessInquirySchema>;

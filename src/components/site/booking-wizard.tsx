@@ -1,14 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   MapPin,
   Video,
   ArrowLeft,
   ArrowRight,
   Loader2,
-  CheckCircle2,
   CalendarClock,
+  Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input, Textarea, Label } from "@/components/ui/form";
@@ -42,10 +43,10 @@ export function BookingWizard({
   serviceFeeCents: number;
   maxAdvanceDays: number;
 }) {
+  const router = useRouter();
   const [step, setStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [result, setResult] = useState<{ confirmationNumber: string } | null>(null);
 
   const [appointmentType, setAppointmentType] = useState<"in_person" | "remote" | "">("");
   const [serviceType, setServiceType] = useState("");
@@ -132,36 +133,7 @@ export function BookingWizard({
       setError(res.error ?? "Something went wrong. Please try again.");
       return;
     }
-    setResult({ confirmationNumber: res.confirmationNumber! });
-    setStep(6);
-  }
-
-  if (step === 6 && result) {
-    return (
-      <div className="mx-auto max-w-lg rounded-3xl border border-navy-100 bg-white p-10 text-center shadow-xl">
-        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-success-100 text-success-600">
-          <CheckCircle2 className="h-8 w-8" />
-        </div>
-        <h2 className="mt-6 text-2xl font-bold text-navy-900">You&apos;re booked!</h2>
-        <p className="mt-2 text-navy-500">A confirmation has been sent to {email}.</p>
-        <div className="mt-6 rounded-xl bg-navy-50 p-5">
-          <p className="text-xs font-semibold uppercase tracking-wide text-navy-400">Confirmation Number</p>
-          <p className="mt-1 text-xl font-bold tracking-wide text-navy-900">{result.confirmationNumber}</p>
-        </div>
-        <div className="mt-5 space-y-1.5 text-left text-sm text-navy-600">
-          <p><strong>{serviceType}</strong> — {appointmentType === "remote" ? "Remote/Online" : "In-Person"}</p>
-          <p>{formatDate(date)} at {slots.find((s) => s.value === time)?.label ?? time}</p>
-          <p>Total due at appointment: <strong>{formatCents(totalCents, { showCents: false })}</strong></p>
-        </div>
-        <p className="mt-6 text-xs text-navy-400">
-          Notar-E Services is not a law firm and does not provide legal advice. Please bring valid,
-          government-issued photo ID to your appointment.
-        </p>
-        <Button variant="outline" className="mt-6 w-full" onClick={() => (window.location.href = "/")}>
-          Return Home
-        </Button>
-      </div>
-    );
+    router.push(`/book/confirmation/${res.appointmentId}`);
   }
 
   return (
@@ -248,6 +220,13 @@ export function BookingWizard({
                   </div>
                 )}
               </div>
+            )}
+            {date && slots.length > 0 && (
+              <p className="mt-4 flex items-start gap-2 text-xs text-navy-400">
+                <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                This time is held for you as you complete booking, but availability is not guaranteed
+                until you receive your confirmation number at the end of this form.
+              </p>
             )}
           </div>
         )}

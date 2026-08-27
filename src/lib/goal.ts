@@ -1,4 +1,4 @@
-export const MILESTONE_DOLLARS = [1000, 5000, 10000, 15000, 20000, 25000, 30000, 40000, 50000];
+export const MILESTONE_DOLLARS = [5000, 10000, 15000, 20000, 25000, 30000, 35000, 40000, 45000, 50000];
 export const MILESTONE_CENTS = MILESTONE_DOLLARS.map((d) => d * 100);
 
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
@@ -25,6 +25,7 @@ export interface GoalStats {
   totalDays: number;
   monthsRemaining: number;
   weeksRemaining: number;
+  dailyTargetCents: number;
   monthlyTargetCents: number;
   weeklyTargetCents: number;
   currentPaceCentsPerDay: number;
@@ -68,6 +69,7 @@ export function computeGoalStats(input: GoalStatsInput): GoalStats {
 
   const monthlyTargetCents = remainingCents > 0 ? remainingCents / monthsRemaining : 0;
   const weeklyTargetCents = remainingCents > 0 ? remainingCents / weeksRemaining : 0;
+  const dailyTargetCents = remainingCents > 0 && daysRemaining > 0 ? remainingCents / daysRemaining : 0;
 
   const currentPaceCentsPerDay = earnedCents / daysElapsed;
   const requiredPaceCentsPerDay = daysRemaining > 0 ? remainingCents / daysRemaining : remainingCents > 0 ? Infinity : 0;
@@ -112,6 +114,7 @@ export function computeGoalStats(input: GoalStatsInput): GoalStats {
     totalDays: Math.floor(totalDays),
     monthsRemaining,
     weeksRemaining,
+    dailyTargetCents,
     monthlyTargetCents,
     weeklyTargetCents,
     currentPaceCentsPerDay,

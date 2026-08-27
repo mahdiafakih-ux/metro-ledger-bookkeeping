@@ -97,17 +97,18 @@ async function main() {
   // --- Demo Businesses ---
   const businesses = await Promise.all(
     [
-      { companyName: "Metro Title Group", category: "title_company", contactName: "Rebecca Long", email: "rebecca@metrotitlegroup.example", phone: "(313) 555-0200", packageKey: "business20", monthlyUsage: 14, monthlyRevenueCents: 250000, status: "active" },
-      { companyName: "Great Lakes Mortgage Co.", category: "mortgage_company", contactName: "Tom Ferraro", email: "tferraro@glmortgage.example", phone: "(248) 555-0221", packageKey: "unlimited", monthlyUsage: 31, monthlyRevenueCents: 400000, status: "active" },
-      { companyName: "Dearborn Family Dentistry", category: "healthcare", contactName: "Dr. Nadia Youssef", email: "office@dearbornfamilydental.example", phone: "(313) 555-0255", packageKey: "", monthlyUsage: 0, monthlyRevenueCents: 0, status: "lead" },
-      { companyName: "Prestige Auto Group", category: "dealership", contactName: "Mike Robertson", email: "mrobertson@prestigeauto.example", phone: "(586) 555-0266", packageKey: "business20", monthlyUsage: 9, monthlyRevenueCents: 250000, status: "active" },
-      { companyName: "Somerset Senior Living", category: "senior_living", contactName: "Patricia Nowak", email: "pnowak@somersetsl.example", phone: "(248) 555-0288", packageKey: "", monthlyUsage: 0, monthlyRevenueCents: 0, status: "lead" },
+      { companyName: "Metro Title Group", category: "title_company", contactName: "Rebecca Long", email: "rebecca@metrotitlegroup.example", phone: "(313) 555-0200", billingContactName: "Accounts Payable", billingContactEmail: "ap@metrotitlegroup.example", packageKey: "business20", monthlyUsage: 14, monthlyRevenueCents: 250000, expectedMonthlyVolume: 18, status: "active" },
+      { companyName: "Great Lakes Mortgage Co.", category: "mortgage_company", contactName: "Tom Ferraro", email: "tferraro@glmortgage.example", phone: "(248) 555-0221", billingContactName: "Tom Ferraro", billingContactEmail: "tferraro@glmortgage.example", packageKey: "unlimited", monthlyUsage: 31, monthlyRevenueCents: 400000, expectedMonthlyVolume: 30, status: "active" },
+      { companyName: "Dearborn Family Dentistry", category: "healthcare", contactName: "Dr. Nadia Youssef", email: "office@dearbornfamilydental.example", phone: "(313) 555-0255", billingContactName: "", billingContactEmail: "", packageKey: "", monthlyUsage: 0, monthlyRevenueCents: 0, expectedMonthlyVolume: 5, status: "lead" },
+      { companyName: "Prestige Auto Group", category: "dealership", contactName: "Mike Robertson", email: "mrobertson@prestigeauto.example", phone: "(586) 555-0266", billingContactName: "Prestige Accounting", billingContactEmail: "billing@prestigeauto.example", packageKey: "business20", monthlyUsage: 9, monthlyRevenueCents: 250000, expectedMonthlyVolume: 12, status: "active" },
+      { companyName: "Somerset Senior Living", category: "senior_living", contactName: "Patricia Nowak", email: "pnowak@somersetsl.example", phone: "(248) 555-0288", billingContactName: "", billingContactEmail: "", packageKey: "", monthlyUsage: 0, monthlyRevenueCents: 0, expectedMonthlyVolume: 8, status: "lead" },
     ].map((b) =>
       prisma.business.create({
         data: {
           ...b,
           isDemo: true,
           contractStart: b.status === "active" ? daysAgo(90) : null,
+          contractEndDate: b.status === "active" ? daysFromNow(275) : null,
           renewalDate: b.status === "active" ? daysFromNow(275) : null,
           followUpDate: b.status === "lead" ? daysFromNow(2) : null,
           leadSource: "outreach",
@@ -249,18 +250,20 @@ async function main() {
   // --- Pipeline opportunities ---
   await prisma.pipelineOpportunity.createMany({
     data: [
-      { businessName: "Dearborn Family Dentistry", contactName: "Dr. Nadia Youssef", category: "healthcare", stage: "proposal_sent", potentialMonthlyCents: 250000, probability: 55, expectedCloseDate: daysFromNow(10), sortOrder: 1 },
-      { businessName: "Somerset Senior Living", contactName: "Patricia Nowak", category: "senior_living", stage: "meeting_scheduled", potentialMonthlyCents: 250000, probability: 40, expectedCloseDate: daysFromNow(15), sortOrder: 1 },
-      { businessName: "Woodward Law Partners", contactName: "Elliot Grant", category: "law_firm", stage: "contacted", potentialMonthlyCents: 400000, probability: 25, expectedCloseDate: daysFromNow(25), sortOrder: 1 },
-      { businessName: "Riverside Property Management", contactName: "Cheryl Nguyen", category: "property_management", stage: "lead", potentialMonthlyCents: 250000, probability: 15, expectedCloseDate: daysFromNow(40), sortOrder: 1 },
-      { businessName: "AutoNation Livonia", contactName: "Brian Kowalski", category: "dealership", stage: "negotiating", potentialMonthlyCents: 400000, probability: 65, expectedCloseDate: daysFromNow(7), sortOrder: 1 },
-      { businessName: "Community First Credit Union", contactName: "Yasmin Farah", category: "bank_credit_union", stage: "won", potentialMonthlyCents: 250000, probability: 100, expectedCloseDate: daysAgo(4), sortOrder: 1 },
-      { businessName: "Value Rental Cars", contactName: "Pete Simmons", category: "small_business", stage: "lost", potentialMonthlyCents: 25000, probability: 0, expectedCloseDate: daysAgo(10), sortOrder: 1 },
+      { businessName: "Dearborn Family Dentistry", contactName: "Dr. Nadia Youssef", category: "healthcare", stage: "proposal_sent", potentialMonthlyCents: 250000, dealValueCents: 3000000, probability: 55, nextAction: "Follow up on proposal", nextFollowUpDate: daysFromNow(3), contactAttempts: 3, expectedCloseDate: daysFromNow(10), sortOrder: 1 },
+      { businessName: "Somerset Senior Living", contactName: "Patricia Nowak", category: "senior_living", stage: "meeting_scheduled", potentialMonthlyCents: 250000, dealValueCents: 3000000, probability: 40, nextAction: "Prep for on-site meeting", nextFollowUpDate: daysFromNow(2), contactAttempts: 2, expectedCloseDate: daysFromNow(15), sortOrder: 1 },
+      { businessName: "Woodward Law Partners", contactName: "Elliot Grant", category: "law_firm", stage: "contacted", potentialMonthlyCents: 400000, dealValueCents: 4800000, probability: 25, nextAction: "Send case studies", nextFollowUpDate: daysFromNow(5), contactAttempts: 1, expectedCloseDate: daysFromNow(25), sortOrder: 1 },
+      { businessName: "Riverside Property Management", contactName: "Cheryl Nguyen", category: "property_management", stage: "new_lead", potentialMonthlyCents: 250000, dealValueCents: 3000000, probability: 15, nextAction: "Initial outreach call", nextFollowUpDate: daysFromNow(1), contactAttempts: 0, expectedCloseDate: daysFromNow(40), sortOrder: 1 },
+      { businessName: "AutoNation Livonia", contactName: "Brian Kowalski", category: "dealership", stage: "negotiating", potentialMonthlyCents: 400000, dealValueCents: 4800000, probability: 65, nextAction: "Finalize contract terms", nextFollowUpDate: daysFromNow(2), contactAttempts: 5, expectedCloseDate: daysFromNow(7), sortOrder: 1 },
+      { businessName: "Community First Credit Union", contactName: "Yasmin Farah", category: "bank_credit_union", stage: "won", potentialMonthlyCents: 250000, dealValueCents: 3000000, probability: 100, contactAttempts: 4, expectedCloseDate: daysAgo(4), sortOrder: 1 },
+      { businessName: "Value Rental Cars", contactName: "Pete Simmons", category: "small_business", stage: "lost", potentialMonthlyCents: 25000, dealValueCents: 300000, probability: 0, lostReason: "Went with a competitor offering a lower flat rate", contactAttempts: 3, expectedCloseDate: daysAgo(10), sortOrder: 1 },
+      { businessName: "Ford Field Corporate Services", contactName: "Marcus Webb", category: "small_business", stage: "follow_up", potentialMonthlyCents: 250000, dealValueCents: 3000000, probability: 20, nextAction: "Check back after their budget cycle", nextFollowUpDate: daysFromNow(6), contactAttempts: 2, expectedCloseDate: daysFromNow(30), sortOrder: 1 },
+      { businessName: "Birmingham Bloomfield Realty", contactName: "Lisa Chen", category: "real_estate_brokerage", stage: "interested", potentialMonthlyCents: 250000, dealValueCents: 3000000, probability: 35, nextAction: "Send Business 20 plan details", nextFollowUpDate: daysFromNow(4), contactAttempts: 2, expectedCloseDate: daysFromNow(20), sortOrder: 1 },
     ].map((p) => ({ ...p, isDemo: true })),
   });
 
   // --- Outreach log ---
-  const methods = ["call", "email", "text", "in_person"];
+  const methods = ["call", "email", "text", "walk_in", "linkedin", "referral"];
   const responses = ["no_response", "interested", "not_interested", "callback", "voicemail"];
   const companyNames = [
     "Downriver Title Co.", "Oakland County Realty", "Suburban Mortgage Partners", "Henry Ford Health Clinic",
