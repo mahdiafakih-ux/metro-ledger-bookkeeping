@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { Printer, Trash2, Link2, RotateCcw, DollarSign, Loader2, Mail } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Printer, Trash2, Link2, RotateCcw, DollarSign, Loader2, Mail, Download } from "lucide-react";
+import { Button, LinkButton } from "@/components/ui/button";
 import { Select } from "@/components/ui/form";
 import { updateInvoiceStatus, deleteInvoice, sendInvoiceEmailAction } from "@/lib/actions/invoices";
 import { createInvoiceCheckoutSession, refundInvoicePayment, recordManualPayment } from "@/lib/actions/payments";
@@ -96,8 +96,11 @@ export function InvoiceActions({ id, status, balanceDueCents, hasEmail }: { id: 
         </Button>
       )}
       <Button variant="outline" onClick={() => window.print()}>
-        <Printer className="h-4 w-4" /> Print / Save PDF
+        <Printer className="h-4 w-4" /> Print
       </Button>
+      <LinkButton href={`/api/invoices/${id}/pdf`} variant="outline">
+        <Download className="h-4 w-4" /> Download PDF
+      </LinkButton>
       <Button
         variant="danger"
         onClick={async () => {

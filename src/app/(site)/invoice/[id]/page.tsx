@@ -1,8 +1,9 @@
 import { notFound } from "next/navigation";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Download } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { NotareLogo } from "@/components/brand/logo";
 import { Badge, STATUS_TONES } from "@/components/ui/badge";
+import { LinkButton } from "@/components/ui/button";
 import { PayButton } from "@/components/site/pay-button";
 import { createInvoiceCheckoutSession } from "@/lib/actions/payments";
 import { getBusinessSettings } from "@/lib/settings";
@@ -44,6 +45,12 @@ export default async function PublicInvoicePage({
           </p>
         </div>
       )}
+
+      <div className="mb-4 flex justify-end">
+        <LinkButton href={`/api/invoices/${invoice.id}/pdf`} variant="outline" size="sm">
+          <Download className="h-4 w-4" /> Download PDF
+        </LinkButton>
+      </div>
 
       <div className="rounded-2xl border border-navy-100 bg-white p-8 sm:p-10">
         <div className="flex items-start justify-between">
