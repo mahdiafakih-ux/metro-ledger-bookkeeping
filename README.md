@@ -71,7 +71,9 @@ sensitive logic runs in Server Components / Server Actions / Route Handlers.
 
 ## Getting started (local development)
 
-**Prerequisites:** Node 20+.
+**Prerequisites:** Node 20+ and a PostgreSQL database — either a local
+Postgres instance (`prisma/schema.prisma` targets `provider = "postgresql"`)
+or a free Supabase project used for dev too.
 
 ```bash
 # 1. Install dependencies
@@ -127,15 +129,20 @@ src/
       (dashboard)/           # everything behind the sidebar shell
     api/
       availability/          # booking slot lookup
-      export/*/               # CSV export endpoints
+      export/*/               # CSV export endpoints (admin-only)
+      invoices/[id]/pdf/       # server-generated invoice PDF
+      webhooks/stripe/          # Stripe webhook handler (signature-verified)
+      cron/appointment-reminders/ # daily Vercel Cron job (CRON_SECRET-protected)
   components/
     site/                    # public-site UI (navbar, footer, booking wizard, ...)
-    admin/                    # dashboard UI (sidebar, charts, forms, ...)
+    admin/                    # dashboard UI (sidebar, charts, forms, mobile bottom nav, ...)
     brand/                    # the Notar-E logo (pure SVG, no external assets)
     ui/                       # shared design-system primitives
   lib/
-    actions/                  # Server Actions — all writes go through here
+    actions/                  # Server Actions — all writes go through here, each auth-guarded
     queries/                  # read-side data aggregation for dashboards
+    pdf/                      # invoice PDF document (@react-pdf/renderer)
+    stripe.ts, payments.ts, email.ts, rate-limit.ts, milestones.ts,
     goal.ts, scorecard.ts, availability.ts, pricing-defaults.ts, ...
   proxy.ts                    # Next.js "proxy" (middleware) — protects /admin and /api/export
 ```
@@ -167,20 +174,6 @@ not legal advice — verify current Michigan notary statutes and fee limits
 with a licensed attorney before relying on this in production.
 
 ---
-
-## Local development
-
-The schema targets PostgreSQL (`prisma/schema.prisma` has
-`provider = "postgresql"`). For local dev, either run a local Postgres
-instance and point `DATABASE_URL` at it, or use a free Supabase project for
-dev too. Then:
-
-```bash
-npm install
-npx prisma migrate dev   # applies prisma/migrations/ to your local DB
-npm run db:seed          # creates your admin user + demo data
-npm run dev
-```
 
 ## Deploying to Vercel + Supabase
 
