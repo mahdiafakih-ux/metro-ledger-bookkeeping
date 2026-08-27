@@ -1,12 +1,13 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import { Phone, Mail } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge, STATUS_TONES } from "@/components/ui/badge";
 import { BusinessForm } from "@/components/admin/business-form";
 import { formatCents } from "@/lib/money";
 import { BUSINESS_CATEGORY_LABELS } from "@/lib/constants";
-import { formatDate, formatDateTime, titleCase } from "@/lib/utils";
+import { formatDate, formatDateTime, titleCase, telHref } from "@/lib/utils";
 
 export default async function BusinessDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -34,6 +35,27 @@ export default async function BusinessDetailPage({ params }: { params: Promise<{
         </div>
         <Badge tone={STATUS_TONES[business.status] ?? "neutral"}>{titleCase(business.status)}</Badge>
       </div>
+
+      {(business.phone || business.email) && (
+        <div className="flex flex-wrap gap-2">
+          {business.phone && (
+            <a
+              href={telHref(business.phone)}
+              className="flex h-11 items-center gap-2 rounded-full bg-success-100/60 px-4 text-sm font-semibold text-success-700 active:bg-success-100"
+            >
+              <Phone className="h-4 w-4" /> {business.phone}
+            </a>
+          )}
+          {business.email && (
+            <a
+              href={`mailto:${business.email}`}
+              className="flex h-11 items-center gap-2 rounded-full bg-accent-100/60 px-4 text-sm font-semibold text-accent-700 active:bg-accent-100"
+            >
+              <Mail className="h-4 w-4" /> {business.email}
+            </a>
+          )}
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <Card className="p-4"><p className="text-xs font-semibold uppercase text-navy-400">Lifetime Revenue</p><p className="mt-1 text-xl font-bold text-success-600">{formatCents(lifetimeRevenueCents, { showCents: false })}</p></Card>

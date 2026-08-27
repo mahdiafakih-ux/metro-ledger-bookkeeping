@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Rocket, CalendarClock, Clock, Target, PhoneCall, ArrowRight, MapPin, Video, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { Rocket, CalendarClock, Clock, Target, PhoneCall, ArrowRight, MapPin, Video, TrendingUp, TrendingDown, Minus, Mail } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge, STATUS_TONES } from "@/components/ui/badge";
@@ -8,7 +8,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { getDashboardStats } from "@/lib/queries/dashboard";
 import { getPriorityActions, getOutstandingInvoicesSummary } from "@/lib/queries/command-center";
 import { formatCents } from "@/lib/money";
-import { formatTime, titleCase, cn } from "@/lib/utils";
+import { formatTime, titleCase, cn, telHref } from "@/lib/utils";
 
 function startOfDay(d = new Date()) { const x = new Date(d); x.setHours(0, 0, 0, 0); return x; }
 function endOfDay(d = new Date()) { const x = new Date(d); x.setHours(23, 59, 59, 999); return x; }
@@ -207,11 +207,23 @@ export default async function CommandCenterPage() {
             ) : (
               <ul className="divide-y divide-navy-100">
                 {followUpsToday.map((c) => (
-                  <li key={c.id}>
-                    <Link href={`/admin/clients/${c.id}`} className="flex items-center justify-between p-4 hover:bg-navy-50">
-                      <p className="text-sm font-semibold text-navy-900">{c.name}</p>
-                      <span className="text-xs text-navy-400">{c.phone || c.email}</span>
+                  <li key={c.id} className="flex items-center justify-between gap-2 p-4 hover:bg-navy-50">
+                    <Link href={`/admin/clients/${c.id}`} className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-navy-900">{c.name}</p>
+                      <p className="truncate text-xs text-navy-400">{c.phone || c.email}</p>
                     </Link>
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      {c.phone && (
+                        <a href={telHref(c.phone)} className="flex h-9 w-9 items-center justify-center rounded-full bg-success-100/60 text-success-700 active:bg-success-100" aria-label={`Call ${c.name}`}>
+                          <PhoneCall className="h-4 w-4" />
+                        </a>
+                      )}
+                      {c.email && (
+                        <a href={`mailto:${c.email}`} className="flex h-9 w-9 items-center justify-center rounded-full bg-accent-100/60 text-accent-700 active:bg-accent-100" aria-label={`Email ${c.name}`}>
+                          <Mail className="h-4 w-4" />
+                        </a>
+                      )}
+                    </div>
                   </li>
                 ))}
               </ul>
