@@ -163,6 +163,30 @@ export async function submitBooking(input: BookingInput): Promise<BookingResult>
     });
   }
 
+  // Notify the business owner of the new booking. The appointment above is
+  // already committed — a failure here is logged and never affects the
+  // customer's booking result.
+  try {
+    const { sendBookingNotificationEmail } = await import("@/lib/email");
+    const result = await sendBookingNotificationEmail({
+      appointmentId,
+      confirmationNumber,
+      name: data.name,
+      email: data.email,
+      phone: data.phone,
+      serviceType: data.serviceType,
+      type: data.appointmentType,
+      scheduledStart: start,
+      address: data.address,
+      notes: data.notes,
+    });
+    if (!result.success) {
+      console.error("Booking owner-notification email failed:", result.error);
+    }
+  } catch (err) {
+    console.error("Booking owner-notification email threw:", err instanceof Error ? err.message : err);
+  }
+
   return {
     success: true,
     confirmationNumber,

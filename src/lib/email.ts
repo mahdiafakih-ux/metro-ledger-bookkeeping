@@ -105,6 +105,18 @@ interface SendResult {
   error?: string;
 }
 
+// Only needed for templates that interpolate free-text customer input
+// (e.g. booking notes) rather than values already constrained by a schema
+// enum or our own formatting.
+function escapeHtml(text: string) {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 async function send(to: string, subject: string, html: string): Promise<SendResult> {
   const resend = getResendClient();
   if (!resend || !to) {
@@ -261,6 +273,56 @@ export async function sendInvoiceEmail(input: {
      ${paragraph("This invoice separates the Michigan statutory notarial fee from other lawful service charges, itemized on the invoice page.")}`
   );
   return send(input.to, `Invoice ${input.invoiceNumber} — Notar-E Services`, html);
+}
+
+/**
+ * Notifies the business owner (BOOKING_NOTIFICATION_EMAIL) whenever a
+ * customer successfully books online. Sent after the appointment row is
+ * already committed to the database — never a condition for the booking
+ * to succeed. Silently skipped (not an error) if either RESEND_API_KEY or
+ * BOOKING_NOTIFICATION_EMAIL isn't configured.
+ */
+export async function sendBookingNotificationEmail(input: {
+  appointmentId: string;
+  confirmationNumber: string;
+  name: string;
+  email: string;
+  phone: string;
+  serviceType: string;
+  type: string;
+  scheduledStart: Date;
+  address?: string;
+  notes?: string;
+}) {
+  const ownerEmail = process.env.BOOKING_NOTIFICATION_EMAIL;
+  if (!ownerEmail) return { success: true, skipped: true } as const;
+
+  const dateStr = input.scheduledStart.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
+  const timeStr = input.scheduledStart.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  const locationStr = input.type === "remote" ? "Remote / Online" : escapeHtml(input.address || "In-person (no address provided)");
+
+  const rows: Array<[string, string]> = [
+    ["Customer Name", escapeHtml(input.name)],
+    ["Customer Email", escapeHtml(input.email)],
+    ["Customer Phone", escapeHtml(input.phone || "—")],
+    ["Service", escapeHtml(input.serviceType)],
+    ["Appointment Date", dateStr],
+    ["Appointment Time", timeStr],
+    ["Location", locationStr],
+    ["Appointment ID", input.appointmentId],
+    ["Confirmation #", input.confirmationNumber],
+  ];
+
+  const html = emailLayout(
+    `New booking from ${escapeHtml(input.name)} — ${dateStr} at ${timeStr}`,
+    `${heading("New Appointment Booked")}
+     ${paragraph(`A customer just booked online. Details below.`)}
+     ${detailsBox(rows)}
+     ${input.notes ? paragraph(`<strong>Customer notes:</strong> ${escapeHtml(input.notes)}`) : ""}
+     ${button(`${siteUrl()}/admin/appointments/${input.appointmentId}`, "View in Command Center")}`
+  );
+
+  return send(ownerEmail, `New Booking — ${input.name} (${dateStr})`, html);
 }
 
 export async function sendBusinessLeadConfirmationEmail(input: { to: string; name: string; company?: string }) {
