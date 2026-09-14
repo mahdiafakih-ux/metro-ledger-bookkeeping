@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { dollarsToCents } from "@/lib/money";
+import { requireAdminSession } from "@/lib/auth";
 
 export interface BusinessInput {
   companyName: string;
@@ -10,11 +11,17 @@ export interface BusinessInput {
   contactName: string;
   email: string;
   phone: string;
+  billingContactName: string;
+  billingContactEmail: string;
+  billingContactPhone: string;
   packageKey: string;
   monthlyUsage: number;
   monthlyRevenueDollars: number;
+  expectedMonthlyVolume: number;
+  customPricingNotes: string;
   status: string;
   contractStart?: string;
+  contractEndDate?: string;
   renewalDate?: string;
   notes: string;
   followUpDate?: string;
@@ -22,6 +29,9 @@ export interface BusinessInput {
 }
 
 export async function createBusiness(input: BusinessInput) {
+  const session = await requireAdminSession();
+  if (!session) return { success: false, error: "Unauthorized" };
+
   const business = await prisma.business.create({
     data: {
       companyName: input.companyName,
@@ -29,11 +39,17 @@ export async function createBusiness(input: BusinessInput) {
       contactName: input.contactName,
       email: input.email,
       phone: input.phone,
+      billingContactName: input.billingContactName,
+      billingContactEmail: input.billingContactEmail,
+      billingContactPhone: input.billingContactPhone,
       packageKey: input.packageKey,
       monthlyUsage: input.monthlyUsage,
       monthlyRevenueCents: dollarsToCents(input.monthlyRevenueDollars),
+      expectedMonthlyVolume: input.expectedMonthlyVolume,
+      customPricingNotes: input.customPricingNotes,
       status: input.status,
       contractStart: input.contractStart ? new Date(input.contractStart) : null,
+      contractEndDate: input.contractEndDate ? new Date(input.contractEndDate) : null,
       renewalDate: input.renewalDate ? new Date(input.renewalDate) : null,
       notes: input.notes,
       followUpDate: input.followUpDate ? new Date(input.followUpDate) : null,
@@ -45,6 +61,9 @@ export async function createBusiness(input: BusinessInput) {
 }
 
 export async function updateBusiness(id: string, input: BusinessInput) {
+  const session = await requireAdminSession();
+  if (!session) return { success: false, error: "Unauthorized" };
+
   await prisma.business.update({
     where: { id },
     data: {
@@ -53,11 +72,17 @@ export async function updateBusiness(id: string, input: BusinessInput) {
       contactName: input.contactName,
       email: input.email,
       phone: input.phone,
+      billingContactName: input.billingContactName,
+      billingContactEmail: input.billingContactEmail,
+      billingContactPhone: input.billingContactPhone,
       packageKey: input.packageKey,
       monthlyUsage: input.monthlyUsage,
       monthlyRevenueCents: dollarsToCents(input.monthlyRevenueDollars),
+      expectedMonthlyVolume: input.expectedMonthlyVolume,
+      customPricingNotes: input.customPricingNotes,
       status: input.status,
       contractStart: input.contractStart ? new Date(input.contractStart) : null,
+      contractEndDate: input.contractEndDate ? new Date(input.contractEndDate) : null,
       renewalDate: input.renewalDate ? new Date(input.renewalDate) : null,
       notes: input.notes,
       followUpDate: input.followUpDate ? new Date(input.followUpDate) : null,
@@ -70,6 +95,9 @@ export async function updateBusiness(id: string, input: BusinessInput) {
 }
 
 export async function deleteBusiness(id: string) {
+  const session = await requireAdminSession();
+  if (!session) return { success: false, error: "Unauthorized" };
+
   await prisma.business.delete({ where: { id } });
   revalidatePath("/admin/businesses");
   return { success: true };

@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { requireAdminSession } from "@/lib/auth";
 
 export interface MileageInput {
   date: string;
@@ -13,6 +14,9 @@ export interface MileageInput {
 }
 
 export async function createMileageLog(input: MileageInput) {
+  const session = await requireAdminSession();
+  if (!session) return { success: false as const, error: "Unauthorized" };
+
   await prisma.mileageLog.create({
     data: {
       date: new Date(input.date),
@@ -28,6 +32,9 @@ export async function createMileageLog(input: MileageInput) {
 }
 
 export async function deleteMileageLog(id: string) {
+  const session = await requireAdminSession();
+  if (!session) return { success: false as const, error: "Unauthorized" };
+
   await prisma.mileageLog.delete({ where: { id } });
   revalidatePath("/admin/mileage");
   return { success: true };

@@ -18,6 +18,12 @@ import { PricingCard } from "@/components/site/pricing-card";
 import { getActivePricingPlans, getBusinessSettings } from "@/lib/settings";
 import { NotareIcon } from "@/components/brand/logo";
 
+// Reads admin-editable business settings/pricing from the database on every
+// request rather than baking them into the build — also keeps this off
+// Next's static prerender pass, which would otherwise run at build time
+// (before a database may even be reachable, e.g. a fresh Vercel deploy).
+export const dynamic = "force-dynamic";
+
 export default async function HomePage() {
   const [plans, settings] = await Promise.all([getActivePricingPlans(), getBusinessSettings()]);
 
@@ -90,7 +96,7 @@ export default async function HomePage() {
       {/* Trust bar */}
       <section className="border-b border-navy-100 bg-white">
         <div className="mx-auto grid max-w-7xl grid-cols-2 gap-6 px-4 py-12 sm:px-6 md:grid-cols-5 lg:px-8">
-          {trustItems.map((item) => (
+          {trustItems.map((item: any) => (
             <div key={item.label} className="flex flex-col items-center text-center gap-2">
               <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent-100 text-accent-600">
                 <item.icon className="h-5 w-5" />
@@ -175,7 +181,7 @@ export default async function HomePage() {
               {[
                 { label: "Business 20", desc: "Up to 20 appointments / month", price: "$2,500/mo" },
                 { label: "Business Unlimited", desc: "Unlimited qualifying appointments*", price: "$4,000/mo" },
-              ].map((p) => (
+              ].map((p: any) => (
                 <div key={p.label} className="rounded-xl bg-navy-800 p-5">
                   <div className="flex items-center justify-between">
                     <p className="font-semibold text-white">{p.label}</p>
@@ -200,7 +206,7 @@ export default async function HomePage() {
           description="Every price separates the Michigan-limited statutory notarial fee from other lawful service charges."
         />
         <div className="mt-14 grid gap-8 lg:grid-cols-3">
-          {plans.map((plan) => (
+          {plans.map((plan: any) => (
             <PricingCard key={plan.key} plan={plan} />
           ))}
         </div>

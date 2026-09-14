@@ -1,7 +1,17 @@
 export const APPOINTMENT_STATUSES = ["scheduled", "completed", "cancelled", "no_show"] as const;
 export const APPOINTMENT_TYPES = ["in_person", "remote"] as const;
-export const PAYMENT_STATUSES = ["unpaid", "paid"] as const;
-export const PAYMENT_METHODS = ["card", "cash", "check", "invoice", "ach"] as const;
+
+export const PAYMENT_STATUSES = ["unpaid", "pending", "partially_paid", "paid", "refunded", "failed"] as const;
+export const PAYMENT_STATUS_LABELS: Record<string, string> = {
+  unpaid: "Unpaid",
+  pending: "Pending",
+  partially_paid: "Partially Paid",
+  paid: "Paid",
+  refunded: "Refunded",
+  failed: "Failed",
+};
+
+export const PAYMENT_METHODS = ["card", "cash", "check", "invoice", "ach", "stripe"] as const;
 
 export const LEAD_STATUSES = [
   "new_lead",
@@ -70,8 +80,10 @@ export const BUSINESS_CATEGORY_LABELS: Record<string, string> = {
 };
 
 export const PIPELINE_STAGES = [
-  "lead",
+  "new_lead",
   "contacted",
+  "follow_up",
+  "interested",
   "meeting_scheduled",
   "proposal_sent",
   "negotiating",
@@ -80,8 +92,10 @@ export const PIPELINE_STAGES = [
 ] as const;
 
 export const PIPELINE_STAGE_LABELS: Record<string, string> = {
-  lead: "Lead",
+  new_lead: "New Lead",
   contacted: "Contacted",
+  follow_up: "Follow-Up",
+  interested: "Interested",
   meeting_scheduled: "Meeting Scheduled",
   proposal_sent: "Proposal Sent",
   negotiating: "Negotiating",
@@ -89,12 +103,23 @@ export const PIPELINE_STAGE_LABELS: Record<string, string> = {
   lost: "Lost",
 };
 
-export const OUTREACH_METHODS = ["call", "email", "text", "in_person"] as const;
+// Legacy stage keys from before the pipeline upgrade — mapped forward so
+// old records (or a stale client cache) still render sensibly.
+export const PIPELINE_STAGE_ALIASES: Record<string, string> = {
+  lead: "new_lead",
+};
+
+export const OUTREACH_METHODS = ["call", "email", "text", "walk_in", "linkedin", "referral", "meeting", "proposal"] as const;
 export const OUTREACH_METHOD_LABELS: Record<string, string> = {
   call: "Call",
   email: "Email",
   text: "Text",
-  in_person: "In Person",
+  walk_in: "Walk-In",
+  linkedin: "LinkedIn",
+  referral: "Referral",
+  meeting: "Meeting",
+  proposal: "Proposal",
+  in_person: "In Person", // legacy value from before the channel expansion
 };
 
 export const OUTREACH_RESPONSES = ["no_response", "interested", "not_interested", "callback", "voicemail"] as const;
@@ -144,13 +169,15 @@ export const EXPENSE_CATEGORY_LABELS: Record<string, string> = {
   other: "Other",
 };
 
-export const INVOICE_STATUSES = ["draft", "sent", "paid", "overdue", "cancelled"] as const;
+export const INVOICE_STATUSES = ["draft", "sent", "paid", "partially_paid", "overdue", "cancelled", "refunded"] as const;
 export const INVOICE_STATUS_LABELS: Record<string, string> = {
   draft: "Draft",
   sent: "Sent",
   paid: "Paid",
+  partially_paid: "Partially Paid",
   overdue: "Overdue",
   cancelled: "Cancelled",
+  refunded: "Refunded",
 };
 
 export const SERVICE_TYPES = [

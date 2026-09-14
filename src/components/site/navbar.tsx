@@ -29,7 +29,7 @@ export function Navbar() {
         </Link>
 
         <nav className="hidden items-center gap-1 lg:flex">
-          {LINKS.map((link) => (
+          {LINKS.map((link: any) => (
             <Link
               key={link.href}
               href={link.href}
@@ -44,7 +44,7 @@ export function Navbar() {
         </nav>
 
         <div className="hidden items-center gap-3 lg:flex">
-          <Link href="/login" className="text-sm font-medium text-navy-500 hover:text-navy-900">
+          <Link href="/portal/login" className="text-sm font-medium text-navy-500 hover:text-navy-900">
             Client Login
           </Link>
           <LinkButton href="/book" size="md">
@@ -64,7 +64,7 @@ export function Navbar() {
       {open && (
         <div className="border-t border-navy-100 bg-white px-4 py-4 lg:hidden">
           <nav className="flex flex-col gap-1">
-            {LINKS.map((link) => (
+            {LINKS.map((link: any) => (
               <Link
                 key={link.href}
                 href={link.href}
@@ -75,7 +75,7 @@ export function Navbar() {
               </Link>
             ))}
             <Link
-              href="/login"
+              href="/portal/login"
               onClick={() => setOpen(false)}
               className="rounded-lg px-3 py-2.5 text-sm font-medium text-navy-700 hover:bg-navy-50"
             >

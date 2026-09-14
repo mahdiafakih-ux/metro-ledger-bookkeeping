@@ -23,7 +23,7 @@ export async function proxy(request: NextRequest) {
   const isAdminArea = pathname.startsWith("/admin");
 
   if (!isAdminArea && !isProtectedApi) return NextResponse.next();
-  if (PUBLIC_ADMIN_PATHS.some((p) => pathname.startsWith(p))) return NextResponse.next();
+  if (PUBLIC_ADMIN_PATHS.some((p: any) => pathname.startsWith(p))) return NextResponse.next();
 
   const token = request.cookies.get(COOKIE_NAME)?.value;
   const valid = await isValidSession(token);

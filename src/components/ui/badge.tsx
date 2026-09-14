@@ -55,4 +55,11 @@ export const STATUS_TONES: Record<string, keyof typeof TONES> = {
   new: "blue",
   follow_up: "amber",
   meeting_booked: "green",
+  pending: "amber",
+  partially_paid: "amber",
+  refunded: "neutral",
+  failed: "red",
+  negotiating: "amber",
+  meeting_scheduled: "blue",
+  succeeded: "green",
 };

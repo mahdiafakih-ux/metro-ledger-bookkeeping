@@ -23,9 +23,9 @@ export function AvailabilityForm({ initial }: {
   const [form, setForm] = useState(initial);
 
   function toggleDay(day: number) {
-    setForm((prev) => ({
+    setForm((prev: any) => ({
       ...prev,
-      activeDays: prev.activeDays.includes(day) ? prev.activeDays.filter((d) => d !== day) : [...prev.activeDays, day].sort(),
+      activeDays: prev.activeDays.includes(day) ? prev.activeDays.filter((d: any) => d !== day) : [...prev.activeDays, day].sort(),
     }));
   }
 
@@ -102,11 +102,11 @@ export function BlackoutDatesManager({ initial }: { initial: { id: string; date:
       </form>
       {dates.length > 0 && (
         <ul className="divide-y divide-navy-100 rounded-lg border border-navy-100">
-          {dates.map((d) => (
+          {dates.map((d: any) => (
             <li key={d.id} className="flex items-center justify-between px-4 py-2.5 text-sm">
               <span className="font-medium text-navy-700">{formatDate(d.date)} {d.reason && `— ${d.reason}`}</span>
               <button
-                onClick={async () => { await removeBlackoutDate(d.id); setDates((prev) => prev.filter((x) => x.id !== d.id)); }}
+                onClick={async () => { await removeBlackoutDate(d.id); setDates((prev: any) => prev.filter((x: any) => x.id !== d.id)); }}
                 className="text-navy-300 hover:text-danger-600"
               >
                 <Trash2 className="h-4 w-4" />

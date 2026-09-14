@@ -1,10 +1,11 @@
 import { notFound } from "next/navigation";
+import { Phone, Mail } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge, STATUS_TONES } from "@/components/ui/badge";
 import { AppointmentActions } from "@/components/admin/appointment-actions";
 import { AppointmentForm } from "@/components/admin/appointment-form";
-import { titleCase } from "@/lib/utils";
+import { titleCase, telHref } from "@/lib/utils";
 
 function toDatetimeLocal(d: Date) {
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -36,10 +37,36 @@ export default async function AppointmentDetailPage({ params }: { params: Promis
         </div>
       </div>
 
+      {(appointment.phone || appointment.email) && (
+        <div className="flex flex-wrap gap-2">
+          {appointment.phone && (
+            <a
+              href={telHref(appointment.phone)}
+              className="flex h-11 items-center gap-2 rounded-full bg-success-100/60 px-4 text-sm font-semibold text-success-700 active:bg-success-100"
+            >
+              <Phone className="h-4 w-4" /> {appointment.phone}
+            </a>
+          )}
+          {appointment.email && (
+            <a
+              href={`mailto:${appointment.email}`}
+              className="flex h-11 items-center gap-2 rounded-full bg-accent-100/60 px-4 text-sm font-semibold text-accent-700 active:bg-accent-100"
+            >
+              <Mail className="h-4 w-4" /> {appointment.email}
+            </a>
+          )}
+        </div>
+      )}
+
       <Card>
         <CardHeader><CardTitle>Quick Actions</CardTitle></CardHeader>
         <CardBody>
-          <AppointmentActions id={appointment.id} status={appointment.status} paymentStatus={appointment.paymentStatus} />
+          <AppointmentActions
+            id={appointment.id}
+            status={appointment.status}
+            paymentStatus={appointment.paymentStatus}
+            balanceDueCents={appointment.totalAmountCents - appointment.amountPaidCents}
+          />
         </CardBody>
       </Card>
 

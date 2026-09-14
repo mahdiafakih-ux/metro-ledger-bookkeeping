@@ -30,7 +30,7 @@ export function Footer() {
             <ul className="mt-4 space-y-2 text-sm">
               <li><Link href="/book" className="hover:text-white">Book an Appointment</Link></li>
               <li><Link href="/contact" className="hover:text-white">Become a Business Partner</Link></li>
-              <li><Link href="/login" className="hover:text-white">Client Login</Link></li>
+              <li><Link href="/portal/login" className="hover:text-white">Client Login</Link></li>
               <li><Link href="/admin" className="hover:text-white">Notar-E Command Center</Link></li>
             </ul>
           </div>

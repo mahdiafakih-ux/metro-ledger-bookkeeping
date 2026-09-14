@@ -30,7 +30,7 @@ export default function SetupWizardPage() {
   const [startingRevenue, setStartingRevenue] = useState(0);
 
   function toggleDay(day: number) {
-    setActiveDays((prev) => (prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day].sort()));
+    setActiveDays((prev: any) => (prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day].sort()));
   }
 
   async function finish() {

@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/db";
 import { verifyPassword, setSessionCookie, clearSessionCookie } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 export interface LoginResult {
   success: boolean;
@@ -10,6 +11,11 @@ export interface LoginResult {
 }
 
 export async function loginAction(input: { email: string; password: string }): Promise<LoginResult> {
+  const ip = await getClientIp();
+  const email = input.email.trim().toLowerCase();
+  const { allowed } = rateLimit(`login:${ip}:${email}`, 5, 15 * 60 * 1000);
+  if (!allowed) return { success: false, error: "Too many attempts. Please wait a few minutes and try again." };
+
   const user = await prisma.adminUser.findUnique({ where: { email: input.email.trim().toLowerCase() } });
   if (!user) return { success: false, error: "Invalid email or password" };
 

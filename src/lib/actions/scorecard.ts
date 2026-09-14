@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { dollarsToCents } from "@/lib/money";
+import { requireAdminSession } from "@/lib/auth";
 
 export interface ScorecardInput {
   businessesContacted: number;
@@ -22,6 +23,9 @@ function today() {
 }
 
 export async function saveTodayScorecard(input: ScorecardInput) {
+  const session = await requireAdminSession();
+  if (!session) return { success: false as const, error: "Unauthorized" };
+
   const date = today();
   await prisma.scorecardEntry.upsert({
     where: { date },
@@ -53,6 +57,9 @@ export async function saveTodayScorecard(input: ScorecardInput) {
 }
 
 export async function saveScorecardTargets(input: { targetBusinessesContacted: number; targetCalls: number; targetEmails: number; targetFollowUps: number }) {
+  const session = await requireAdminSession();
+  if (!session) return { success: false as const, error: "Unauthorized" };
+
   await prisma.businessSettings.update({ where: { id: "default" }, data: input });
   revalidatePath("/admin/scorecard");
   return { success: true };

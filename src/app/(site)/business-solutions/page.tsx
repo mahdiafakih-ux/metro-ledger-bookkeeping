@@ -18,7 +18,14 @@ import {
 import { SectionHeading } from "@/components/site/section-heading";
 import { LinkButton } from "@/components/ui/button";
 import { PricingCard } from "@/components/site/pricing-card";
+import { BusinessInquiryForm } from "@/components/site/business-inquiry-form";
 import { getActivePricingPlans } from "@/lib/settings";
+
+// Reads admin-editable pricing plans from the database on every request
+// rather than baking them into the build — also keeps this off Next's
+// static prerender pass, which would otherwise run at build time (before a
+// database may even be reachable, e.g. a fresh Vercel deploy).
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Business Notary Solutions",
@@ -48,7 +55,7 @@ const BENEFITS = [
 
 export default async function BusinessSolutionsPage() {
   const allPlans = await getActivePricingPlans();
-  const plans = allPlans.filter((p) => p.billingPeriod === "monthly");
+  const plans = allPlans.filter((p: any) => p.billingPeriod === "monthly");
 
   return (
     <>
@@ -64,7 +71,7 @@ export default async function BusinessSolutionsPage() {
             turnaround for every closing, signing, and document.
           </p>
           <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <LinkButton href="/contact" size="lg">
+            <LinkButton href="#inquiry" size="lg">
               Become a Business Partner <ArrowRight className="h-4 w-4" />
             </LinkButton>
             <LinkButton href="#pricing" variant="outline" size="lg" className="border-white/20 text-white hover:bg-white/10">
@@ -114,22 +121,23 @@ export default async function BusinessSolutionsPage() {
           description="Statutory notarial fees are always disclosed separately from your service plan, per Michigan law."
         />
         <div className="mt-14 grid gap-8 lg:grid-cols-2 lg:max-w-4xl lg:mx-auto">
-          {plans.map((plan) => (
+          {plans.map((plan: any) => (
             <PricingCard key={plan.key} plan={plan} />
           ))}
         </div>
       </section>
 
-      <section className="bg-accent-600 py-16">
-        <div className="mx-auto flex max-w-4xl flex-col items-center gap-6 px-4 text-center sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-bold text-white">Let&apos;s build a plan around your volume</h2>
-          <p className="text-accent-100">
-            Tell us how many appointments you typically need per month and we&apos;ll recommend the
-            right plan — including custom terms for high-volume partners.
-          </p>
-          <LinkButton href="/contact" variant="dark" size="lg" className="bg-white text-accent-700 hover:bg-navy-50">
-            Become a Business Partner <ArrowRight className="h-4 w-4" />
-          </LinkButton>
+      <section id="inquiry" className="bg-navy-950 py-24 scroll-mt-20">
+        <div className="mx-auto max-w-2xl px-4 sm:px-6 lg:px-8">
+          <SectionHeading
+            light
+            eyebrow="Get Started"
+            title="Let's build a plan around your volume"
+            description="Tell us about your business and we'll recommend the right plan — including custom terms for high-volume partners."
+          />
+          <div className="mt-10 rounded-3xl border border-navy-800 bg-navy-900 p-8 sm:p-10">
+            <BusinessInquiryForm />
+          </div>
         </div>
       </section>
     </>
