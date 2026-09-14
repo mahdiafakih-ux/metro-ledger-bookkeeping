@@ -44,7 +44,7 @@ export function Navbar() {
         </nav>
 
         <div className="hidden items-center gap-3 lg:flex">
-          <Link href="/login" className="text-sm font-medium text-navy-500 hover:text-navy-900">
+          <Link href="/portal/login" className="text-sm font-medium text-navy-500 hover:text-navy-900">
             Client Login
           </Link>
           <LinkButton href="/book" size="md">
@@ -75,7 +75,7 @@ export function Navbar() {
               </Link>
             ))}
             <Link
-              href="/login"
+              href="/portal/login"
               onClick={() => setOpen(false)}
               className="rounded-lg px-3 py-2.5 text-sm font-medium text-navy-700 hover:bg-navy-50"
             >
