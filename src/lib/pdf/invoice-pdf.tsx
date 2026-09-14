@@ -1,7 +1,9 @@
 import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
-import type { Invoice, InvoiceItem } from "@prisma/client";
 import { formatCents } from "@/lib/money";
 import { formatDate, titleCase } from "@/lib/utils";
+
+type Invoice = any;
+type InvoiceItem = any;
 
 const styles = StyleSheet.create({
   page: { padding: 40, fontSize: 10, fontFamily: "Helvetica", color: "#1a2138" },
@@ -59,9 +61,9 @@ interface InvoicePdfProps {
 }
 
 export function InvoicePdfDocument({ invoice, business }: InvoicePdfProps) {
-  const statutoryItems = invoice.items.filter((i) => i.type === "statutory_fee");
-  const otherItems = invoice.items.filter((i) => i.type !== "statutory_fee");
-  const subtotal = invoice.items.reduce((sum, i) => sum + i.amountCents, 0);
+  const statutoryItems = invoice.items.filter((i: any) => i.type === "statutory_fee");
+  const otherItems = invoice.items.filter((i: any) => i.type !== "statutory_fee");
+  const subtotal = invoice.items.reduce((sum: number, i: any) => sum + i.amountCents, 0);
   const total = subtotal + invoice.taxCents;
   const balanceDueCents = total - invoice.amountPaidCents;
 
@@ -109,7 +111,7 @@ export function InvoicePdfDocument({ invoice, business }: InvoicePdfProps) {
           {statutoryItems.length > 0 && (
             <Text style={styles.sectionLabel}>Statutory Notarial Fees (MCL 55.287 — max $10/act)</Text>
           )}
-          {statutoryItems.map((item) => (
+          {statutoryItems.map((item: any) => (
             <View key={item.id} style={styles.tableRow}>
               <Text style={styles.colDescription}>{item.description}</Text>
               <Text style={styles.colQty}>{item.quantity}</Text>
@@ -119,7 +121,7 @@ export function InvoicePdfDocument({ invoice, business }: InvoicePdfProps) {
           ))}
 
           {otherItems.length > 0 && <Text style={styles.sectionLabel}>Other Lawful Services</Text>}
-          {otherItems.map((item) => (
+          {otherItems.map((item: any) => (
             <View key={item.id} style={styles.tableRow}>
               <Text style={styles.colDescription}>{item.description}</Text>
               <Text style={styles.colQty}>{item.quantity}</Text>

@@ -101,7 +101,7 @@ export function BusinessForm({ businessId, initial, pricingPlans }: { businessId
           <FormField label="Assigned Plan">
             <Select value={packageKey} onChange={(e) => setPackageKey(e.target.value)}>
               <option value="">— None —</option>
-              {pricingPlans.map((p) => <option key={p.key} value={p.key}>{p.name}</option>)}
+              {pricingPlans.map((p: any) => <option key={p.key} value={p.key}>{p.name}</option>)}
             </Select>
           </FormField>
           <FormField label="Monthly Revenue ($)"><Input type="number" min={0} step="0.01" value={monthlyRevenue} onChange={(e) => setMonthlyRevenue(Number(e.target.value))} /></FormField>

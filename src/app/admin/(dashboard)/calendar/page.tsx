@@ -123,8 +123,8 @@ function MonthGrid({
         ))}
       </div>
       <div className="grid grid-cols-7">
-        {days.map((day) => {
-          const dayAppts = appointments.filter((a) => isSameDay(a.scheduledStart, day));
+        {days.map((day: any) => {
+          const dayAppts = appointments.filter((a: any) => isSameDay(a.scheduledStart, day));
           const dayBlocks = adminBlocks.filter((b) => isSameDay(b.startTime, day));
           return (
             <Link
@@ -139,7 +139,7 @@ function MonthGrid({
                 {format(day, "d")}
               </span>
               <div className="mt-1 space-y-1">
-                {dayAppts.slice(0, 3).map((a) => (
+                {dayAppts.slice(0, 3).map((a: any) => (
                   <p key={a.id} className="truncate rounded bg-accent-100 px-1.5 py-0.5 text-[11px] font-medium text-accent-700">
                     {format(a.scheduledStart, "h:mma")} {a.clientName}
                   </p>
@@ -171,15 +171,15 @@ function WeekGrid({
   const days = Array.from({ length: 7 }).map((_, i) => addDays(rangeStart, i));
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
-      {days.map((day) => {
-        const dayAppts = appointments.filter((a) => isSameDay(a.scheduledStart, day));
+      {days.map((day: any) => {
+        const dayAppts = appointments.filter((a: any) => isSameDay(a.scheduledStart, day));
         const dayBlocks = adminBlocks.filter((b) => isSameDay(b.startTime, day));
         return (
           <div key={day.toISOString()} className="rounded-2xl border border-navy-100 bg-white p-3">
             <p className={cn("mb-2 text-sm font-bold", isToday(day) ? "text-accent-600" : "text-navy-700")}>{format(day, "EEE d")}</p>
             <div className="space-y-2">
               {dayAppts.length === 0 && dayBlocks.length === 0 && <p className="text-xs text-navy-300">No appointments</p>}
-              {dayAppts.map((a) => (
+              {dayAppts.map((a: any) => (
                 <Link key={a.id} href={`/admin/appointments/${a.id}`} className="block rounded-lg bg-navy-50 p-2 hover:bg-accent-100/50">
                   <p className="text-xs font-semibold text-navy-900">{format(a.scheduledStart, "h:mm a")}</p>
                   <p className="truncate text-xs text-navy-500">{a.clientName}</p>
@@ -223,7 +223,7 @@ function DayList({
           <p className="p-10 text-center text-sm text-navy-400">No appointments on {format(anchor, "MMMM d, yyyy")}.</p>
         ) : (
           <ul className="divide-y divide-navy-100">
-            {appointments.map((a) => (
+            {appointments.map((a: any) => (
               <li key={a.id}>
                 <Link href={`/admin/appointments/${a.id}`} className="flex items-center justify-between gap-4 p-5 hover:bg-navy-50">
                   <div className="flex items-center gap-4">

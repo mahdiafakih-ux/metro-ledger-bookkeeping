@@ -51,7 +51,7 @@ export async function createInvoice(input: InvoiceInput) {
       taxCents: dollarsToCents(input.taxDollars || 0),
       notes: input.notes,
       items: {
-        create: input.items.map((item) => ({
+        create: input.items.map((item: any) => ({
           description: item.description,
           type: item.type,
           quantity: item.quantity,
@@ -89,7 +89,7 @@ export async function sendInvoiceEmailAction(id: string) {
   if (!invoice) return { success: false, error: "Invoice not found" };
   if (!invoice.email) return { success: false, error: "This invoice has no email address on file" };
 
-  const total = invoice.items.reduce((sum, i) => sum + i.amountCents, 0) + invoice.taxCents;
+  const total = invoice.items.reduce((sum: number, i: any) => sum + i.amountCents, 0) + invoice.taxCents;
   const { sendInvoiceEmail } = await import("@/lib/email");
   const result = await sendInvoiceEmail({
     to: invoice.email,

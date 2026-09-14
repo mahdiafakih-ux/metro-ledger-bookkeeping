@@ -102,11 +102,11 @@ export async function createInvoiceCheckoutSession(invoiceId: string): Promise<C
   const invoice = await prisma.invoice.findUnique({ where: { id: invoiceId }, include: { items: true } });
   if (!invoice) return { success: false, error: "Invoice not found" };
 
-  const invoiceTotal = invoice.items.reduce((sum, i) => sum + i.amountCents, 0) + invoice.taxCents;
+  const invoiceTotal = invoice.items.reduce((sum: number, i: any) => sum + i.amountCents, 0) + invoice.taxCents;
   const balanceDueCents = invoiceTotal - invoice.amountPaidCents;
   if (balanceDueCents <= 0) return { success: false, error: "This invoice is already paid in full." };
 
-  const lineItems = invoice.items.map((item) => ({
+  const lineItems = invoice.items.map((item: any) => ({
     price_data: {
       currency: "usd",
       product_data: {

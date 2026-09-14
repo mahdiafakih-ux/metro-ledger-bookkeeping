@@ -335,3 +335,11 @@ export async function sendBusinessLeadConfirmationEmail(input: { to: string; nam
   );
   return send(input.to, "Thanks for reaching out to Notar-E Services", html);
 }
+
+export async function sendLoginCodeEmail(input: { to: string; name: string; code: string }) {
+  const html = emailLayout(
+    `Your Notar-E Client Portal Access Code`,
+    `${heading("Your Access Code")}\n     ${paragraph(`Hi ${escapeHtml(input.name)}, here is your 6-digit access code:`)}\n     ${detailsBox([["Access Code", `<strong style="font-size: 24px; font-family: monospace; letter-spacing: 2px;">${input.code}</strong>`]])}\n     ${paragraph("This code expires in 15 minutes. If you didn't request this code, you can ignore this email.")}\n     ${button(`${siteUrl()}/portal/login`, "Go to Portal")}`
+  );
+  return send(input.to, "Your Notar-E Portal Access Code", html);
+}

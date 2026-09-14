@@ -41,7 +41,7 @@ export default async function InvoicesPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-navy-100">
-                {invoices.map((inv) => {
+                {invoices.map((inv: any) => {
                   const total = inv.items.reduce((sum, i) => sum + i.amountCents, 0);
                   return (
                     <tr key={inv.id} className="hover:bg-navy-50">

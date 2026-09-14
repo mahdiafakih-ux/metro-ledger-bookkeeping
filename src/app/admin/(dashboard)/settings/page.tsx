@@ -132,7 +132,7 @@ export default async function SettingsPage() {
       <Card>
         <CardHeader><CardTitle>Pricing Plans</CardTitle></CardHeader>
         <CardBody className="space-y-4">
-          {pricingPlans.map((plan) => (
+          {pricingPlans.map((plan: any) => (
             <PricingPlanEditor
               key={plan.id}
               plan={{

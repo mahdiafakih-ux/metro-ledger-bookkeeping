@@ -45,7 +45,7 @@ export default async function CommandCenterPage() {
   // Auto-prioritized actions: overdue money and overdue follow-ups (from the
   // query above) plus same-day signals computed here, ranked highest-impact first.
   const actions = [...priorityActions];
-  const scheduledToday = todayAppointments.filter((a) => a.status === "scheduled").length;
+  const scheduledToday = todayAppointments.filter((a: any) => a.status === "scheduled").length;
   if (scheduledToday > 0) {
     actions.push({
       id: "appointments-today",
@@ -182,7 +182,7 @@ export default async function CommandCenterPage() {
               <div className="p-5"><EmptyState title="No appointments today" /></div>
             ) : (
               <ul className="divide-y divide-navy-100">
-                {todayAppointments.map((a) => (
+                {todayAppointments.map((a: any) => (
                   <li key={a.id}>
                     <Link href={`/admin/appointments/${a.id}`} className="flex items-center gap-3 p-4 hover:bg-navy-50">
                       {a.type === "remote" ? <Video className="h-4 w-4 text-navy-400" /> : <MapPin className="h-4 w-4 text-navy-400" />}
@@ -238,7 +238,7 @@ export default async function CommandCenterPage() {
               <div className="p-5"><EmptyState title="No open prospects" /></div>
             ) : (
               <ul className="divide-y divide-navy-100">
-                {openProspects.map((p) => (
+                {openProspects.map((p: any) => (
                   <li key={p.id}>
                     <Link href={`/admin/pipeline/${p.id}`} className="flex items-center justify-between p-4 hover:bg-navy-50">
                       <div>

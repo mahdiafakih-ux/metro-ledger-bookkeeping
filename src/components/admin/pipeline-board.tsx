@@ -92,7 +92,7 @@ export function PipelineBoard({ opportunities }: { opportunities: OpportunityVie
     if (!over) return;
     const newStage = String(over.id);
     const oppId = String(active.id);
-    const current = items.find((i) => i.id === oppId);
+    const current = items.find((i: any) => i.id === oppId);
     if (!current || current.stage === newStage) return;
 
     let lostReason: string | undefined;
@@ -100,7 +100,7 @@ export function PipelineBoard({ opportunities }: { opportunities: OpportunityVie
       lostReason = window.prompt(`Why was ${current.businessName} lost? (optional)`) ?? "";
     }
 
-    setItems((prev) => prev.map((i) => (i.id === oppId ? { ...i, stage: newStage } : i)));
+    setItems((prev: any) => prev.map((i: any) => (i.id === oppId ? { ...i, stage: newStage } : i)));
     const res = await updateOpportunityStage(oppId, newStage, lostReason);
     if (res.success) router.refresh();
   }
@@ -112,8 +112,8 @@ export function PipelineBoard({ opportunities }: { opportunities: OpportunityVie
       </div>
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
         <div className="themed-scroll flex gap-4 overflow-x-auto pb-4">
-          {PIPELINE_STAGES.map((stage) => (
-            <Column key={stage} stage={stage} opportunities={items.filter((i) => i.stage === stage)} />
+          {PIPELINE_STAGES.map((stage: any) => (
+            <Column key={stage} stage={stage} opportunities={items.filter((i: any) => i.stage === stage)} />
           ))}
         </div>
       </DndContext>

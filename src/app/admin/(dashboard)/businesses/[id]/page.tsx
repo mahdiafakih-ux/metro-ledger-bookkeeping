@@ -22,8 +22,8 @@ export default async function BusinessDetailPage({ params }: { params: Promise<{
   ]);
   if (!business) notFound();
 
-  const completedAppointments = business.appointments.filter((a) => a.status === "completed").length;
-  const outstandingCents = invoices.reduce((sum, inv) => sum + inv.items.reduce((s, i) => s + i.amountCents, 0) + inv.taxCents - inv.amountPaidCents, 0);
+  const completedAppointments = business.appointments.filter((a: any) => a.status === "completed").length;
+  const outstandingCents = invoices.reduce((sum: any, inv: any) => sum + inv.items.reduce((s, i) => s + i.amountCents, 0) + inv.taxCents - inv.amountPaidCents, 0);
   const lifetimeRevenueCents = revenueAgg._sum.amountCents ?? 0;
 
   return (
@@ -84,7 +84,7 @@ export default async function BusinessDetailPage({ params }: { params: Promise<{
           <CardHeader><CardTitle>Outstanding Invoices</CardTitle></CardHeader>
           <CardBody className="p-0">
             <ul className="divide-y divide-navy-100">
-              {invoices.map((inv) => {
+              {invoices.map((inv: any) => {
                 const total = inv.items.reduce((s, i) => s + i.amountCents, 0) + inv.taxCents;
                 return (
                   <li key={inv.id}>
@@ -113,7 +113,7 @@ export default async function BusinessDetailPage({ params }: { params: Promise<{
             <p className="p-5 text-sm text-navy-400">No appointments yet.</p>
           ) : (
             <ul className="divide-y divide-navy-100">
-              {business.appointments.map((a) => (
+              {business.appointments.map((a: any) => (
                 <li key={a.id}>
                   <Link href={`/admin/appointments/${a.id}`} className="flex items-center justify-between p-4 hover:bg-navy-50">
                     <div>

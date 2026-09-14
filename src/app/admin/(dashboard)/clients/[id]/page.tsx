@@ -13,7 +13,10 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
   const { id } = await params;
   const client = await prisma.client.findUnique({
     where: { id },
-    include: { appointments: { orderBy: { scheduledStart: "desc" }, take: 20 } },
+    include: {
+      appointments: { orderBy: { scheduledStart: "desc" }, take: 20 },
+      invoices: { orderBy: { issueDate: "desc" }, take: 10, include: { items: true } },
+    },
   });
   if (!client) notFound();
 
@@ -55,6 +58,59 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
         <Card className="p-4"><p className="text-xs font-semibold uppercase text-navy-400">Follow-Up</p><p className="mt-1 text-xl font-bold text-navy-900">{client.followUpDate ? formatDate(client.followUpDate) : "—"}</p></Card>
       </div>
 
+      {/* Billing & Subscription Section */}
+      {client.currentPlanKey && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Subscription & Billing</CardTitle>
+          </CardHeader>
+          <CardBody>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <p className="text-xs font-semibold uppercase text-navy-400">Current Plan</p>
+                <p className="mt-1 text-lg font-bold text-navy-900 capitalize">
+                  {client.currentPlanKey.replace(/_/g, " ")}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase text-navy-400">Subscription Status</p>
+                <p className="mt-1 text-lg font-bold text-navy-900 capitalize">
+                  {client.subscriptionStatus || "—"}
+                </p>
+              </div>
+              {client.stripeCustomerId && (
+                <div>
+                  <p className="text-xs font-semibold uppercase text-navy-400">Stripe Customer ID</p>
+                  <p className="mt-1 text-sm font-mono text-navy-700">{client.stripeCustomerId}</p>
+                </div>
+              )}
+              {client.stripeSubscriptionId && (
+                <div>
+                  <p className="text-xs font-semibold uppercase text-navy-400">Stripe Subscription ID</p>
+                  <p className="mt-1 text-sm font-mono text-navy-700">{client.stripeSubscriptionId}</p>
+                </div>
+              )}
+              {client.nextBillingDate && (
+                <div>
+                  <p className="text-xs font-semibold uppercase text-navy-400">Next Billing Date</p>
+                  <p className="mt-1 text-lg font-bold text-navy-900">
+                    {formatDate(client.nextBillingDate)}
+                  </p>
+                </div>
+              )}
+              {client.currentPlanKey === "business30" && (
+                <div>
+                  <p className="text-xs font-semibold uppercase text-navy-400">Monthly Usage</p>
+                  <p className="mt-1 text-lg font-bold text-navy-900">
+                    {client.monthlyUsageCount} appointments
+                  </p>
+                </div>
+              )}
+            </div>
+          </CardBody>
+        </Card>
+      )}
+
       <Card>
         <CardHeader><CardTitle>Appointment History</CardTitle></CardHeader>
         <CardBody className="p-0">
@@ -62,7 +118,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
             <p className="p-5 text-sm text-navy-400">No appointments yet.</p>
           ) : (
             <ul className="divide-y divide-navy-100">
-              {client.appointments.map((a) => (
+              {client.appointments.map((a: any) => (
                 <li key={a.id}>
                   <Link href={`/admin/appointments/${a.id}`} className="flex items-center justify-between p-4 hover:bg-navy-50">
                     <div>
@@ -73,6 +129,36 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
                   </Link>
                 </li>
               ))}
+            </ul>
+          )}
+        </CardBody>
+      </Card>
+
+      {/* Invoices Section */}
+      <Card>
+        <CardHeader><CardTitle>Invoices ({client.invoices.length})</CardTitle></CardHeader>
+        <CardBody className="p-0">
+          {client.invoices.length === 0 ? (
+            <p className="p-5 text-sm text-navy-400">No invoices yet.</p>
+          ) : (
+            <ul className="divide-y divide-navy-100">
+              {client.invoices.map((inv: any) => {
+                const total = inv.items.reduce((sum, i) => sum + i.amountCents, 0) + inv.taxCents;
+                return (
+                  <li key={inv.id}>
+                    <Link href={`/admin/invoices/${inv.id}`} className="flex items-center justify-between p-4 hover:bg-navy-50">
+                      <div>
+                        <p className="text-sm font-semibold text-navy-900">{inv.invoiceNumber}</p>
+                        <p className="text-xs text-navy-400">{formatDate(inv.issueDate)}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-bold text-navy-900">{formatCents(total)}</p>
+                        <Badge tone={STATUS_TONES[inv.status] ?? "neutral"}>{titleCase(inv.status)}</Badge>
+                      </div>
+                    </Link>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </CardBody>

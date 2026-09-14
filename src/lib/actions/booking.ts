@@ -59,7 +59,7 @@ export async function submitBooking(input: BookingInput): Promise<BookingResult>
   for (let attempt = 0; attempt < 2 && !appointmentId; attempt++) {
     try {
       const result = await prisma.$transaction(
-        async (tx) => {
+        async (tx: any) => {
           const openSlots = await getOpenSlotsForDate(data.date, tx);
           if (!openSlots.some((s) => s.value === data.time)) {
             throw new Error(SLOT_TAKEN_ERROR);
@@ -118,7 +118,7 @@ export async function submitBooking(input: BookingInput): Promise<BookingResult>
 
           return { appointmentId: appointment.id, clientId: client.id };
         },
-        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+        { isolationLevel: "Serializable" as any }
       );
       appointmentId = result.appointmentId;
       clientId = result.clientId;

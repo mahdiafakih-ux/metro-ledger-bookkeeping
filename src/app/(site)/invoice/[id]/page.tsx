@@ -94,7 +94,7 @@ export default async function PublicInvoicePage({
             {statutoryItems.length > 0 && (
               <tr><td colSpan={4} className="pt-4 pb-1 text-xs font-bold uppercase tracking-wide text-navy-400">Statutory Notarial Fees (MCL 55.287 — max $10/act)</td></tr>
             )}
-            {statutoryItems.map((item) => (
+            {statutoryItems.map((item: any) => (
               <tr key={item.id} className="border-b border-navy-50">
                 <td className="py-2.5 text-navy-700">{item.description}</td>
                 <td className="py-2.5 text-right text-navy-600">{item.quantity}</td>
@@ -105,7 +105,7 @@ export default async function PublicInvoicePage({
             {otherItems.length > 0 && (
               <tr><td colSpan={4} className="pt-4 pb-1 text-xs font-bold uppercase tracking-wide text-navy-400">Other Lawful Services</td></tr>
             )}
-            {otherItems.map((item) => (
+            {otherItems.map((item: any) => (
               <tr key={item.id} className="border-b border-navy-50">
                 <td className="py-2.5 text-navy-700">{item.description}</td>
                 <td className="py-2.5 text-right text-navy-600">{item.quantity}</td>

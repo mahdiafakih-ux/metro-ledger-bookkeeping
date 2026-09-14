@@ -55,7 +55,7 @@ const BENEFITS = [
 
 export default async function BusinessSolutionsPage() {
   const allPlans = await getActivePricingPlans();
-  const plans = allPlans.filter((p) => p.billingPeriod === "monthly");
+  const plans = allPlans.filter((p: any) => p.billingPeriod === "monthly");
 
   return (
     <>
@@ -121,7 +121,7 @@ export default async function BusinessSolutionsPage() {
           description="Statutory notarial fees are always disclosed separately from your service plan, per Michigan law."
         />
         <div className="mt-14 grid gap-8 lg:grid-cols-2 lg:max-w-4xl lg:mx-auto">
-          {plans.map((plan) => (
+          {plans.map((plan: any) => (
             <PricingCard key={plan.key} plan={plan} />
           ))}
         </div>

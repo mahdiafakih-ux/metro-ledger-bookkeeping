@@ -158,7 +158,7 @@ export function BookingWizard({
               {[
                 { key: "in_person", label: "In-Person", desc: "We meet you at a convenient location.", icon: MapPin },
                 { key: "remote", label: "Remote / Online", desc: "Available where legally eligible for your document.", icon: Video },
-              ].map((opt) => (
+              ].map((opt: any) => (
                 <button
                   key={opt.key}
                   onClick={() => setAppointmentType(opt.key as "in_person" | "remote")}

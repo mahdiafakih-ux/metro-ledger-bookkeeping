@@ -40,7 +40,7 @@ export async function completeSetup(input: SetupInput) {
 
   await prisma.availabilityRule.deleteMany({});
   await prisma.availabilityRule.createMany({
-    data: input.activeDays.map((day) => ({
+    data: input.activeDays.map((day: any) => ({
       dayOfWeek: day,
       startTime: input.startTime,
       endTime: input.endTime,

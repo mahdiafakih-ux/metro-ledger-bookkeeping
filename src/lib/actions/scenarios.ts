@@ -6,7 +6,7 @@ import { requireAdminSession } from "@/lib/auth";
 
 export interface ScenarioInputs {
   individualAppointments: number;
-  business20Clients: number;
+  business30Clients: number;
   unlimitedClients: number;
   additionalAppointments: number;
   customRevenueDollars: number;
@@ -36,5 +36,5 @@ export async function listScenarios() {
   if (!session) return [];
 
   const rows = await prisma.savedScenario.findMany({ orderBy: { createdAt: "desc" } });
-  return rows.map((r) => ({ id: r.id, name: r.name, inputs: JSON.parse(r.inputsJson) as ScenarioInputs, createdAt: r.createdAt }));
+  return rows.map((r: any) => ({ id: r.id, name: r.name, inputs: JSON.parse(r.inputsJson) as ScenarioInputs, createdAt: r.createdAt }));
 }

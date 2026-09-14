@@ -28,7 +28,7 @@ export async function getOutstandingInvoicesSummary(): Promise<OutstandingInvoic
   let count = 0;
   let totalCents = 0;
   for (const inv of invoices) {
-    const subtotal = inv.items.reduce((sum, i) => sum + i.amountCents, 0);
+    const subtotal = inv.items.reduce((sum: number, i: any) => sum + i.amountCents, 0);
     const balance = subtotal + inv.taxCents - inv.amountPaidCents;
     if (balance > 0) {
       count++;
@@ -64,7 +64,7 @@ export async function getPriorityActions(now = new Date()): Promise<PriorityActi
   const actions: PriorityAction[] = [];
 
   for (const inv of overdueInvoices) {
-    const subtotal = inv.items.reduce((sum, i) => sum + i.amountCents, 0);
+    const subtotal = inv.items.reduce((sum: number, i: any) => sum + i.amountCents, 0);
     const balance = subtotal + inv.taxCents - inv.amountPaidCents;
     if (balance <= 0) continue;
     const overdue = daysOverdue(inv.dueDate, now);

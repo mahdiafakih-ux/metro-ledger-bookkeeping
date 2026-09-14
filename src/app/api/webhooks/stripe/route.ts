@@ -8,6 +8,11 @@ import {
   markAppointmentPaymentFailed,
   markInvoicePaymentFailed,
 } from "@/lib/payments";
+import {
+  handleSubscriptionCreated,
+  handleSubscriptionUpdated,
+  handleSubscriptionDeleted,
+} from "@/lib/subscriptions";
 
 // Route handlers receive the raw body only if we opt out of body parsing —
 // Next.js App Router route handlers already give us the raw stream via
@@ -39,37 +44,114 @@ export async function POST(request: NextRequest) {
   try {
     switch (event.type) {
       case "checkout.session.completed": {
-        const session = event.data.object as Stripe.Checkout.Session;
-        const type = session.metadata?.type;
-        const amountCents = session.amount_total ?? 0;
-        const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id ?? "";
+        // SECURITY: Use transaction to atomically:
+        // 1. Check if event already processed (via unique constraint)
+        // 2. Record payment if new
+        // 3. Mark event as processed
+        // This prevents concurrent webhook deliveries from causing duplicate charges
+        try {
+          await prisma.$transaction(async (tx) => {
+            const session = event.data.object as Stripe.Checkout.Session;
+            const type = session.metadata?.type;
+            const amountCents = session.amount_total ?? 0;
+            const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id ?? "";
+            const customerId = typeof session.customer === "string" ? session.customer : session.customer?.id ?? "";
 
-        if (type === "appointment" && session.metadata?.appointmentId) {
-          await recordAppointmentPayment({
-            appointmentId: session.metadata.appointmentId,
-            amountCents,
-            method: "stripe",
-            stripePaymentIntentId: paymentIntentId,
+            // SECURITY: Validate Stripe session data
+            if (!amountCents || amountCents <= 0) {
+              console.error(`Invalid amount in checkout.session.completed: ${amountCents}`);
+              return; // Skip invalid events
+            }
+
+            if (session.payment_status !== "paid") {
+              console.warn(`Checkout session status not 'paid': ${session.payment_status}`);
+              return; // Skip non-completed payments
+            }
+
+            // Handle individual service appointment payment (one-time)
+            if ((type === "appointment" || type === "individual_appointment") && session.metadata?.appointmentId) {
+              await recordAppointmentPayment({
+                appointmentId: session.metadata.appointmentId,
+                amountCents,
+                method: "stripe",
+                stripePaymentIntentId: paymentIntentId,
+                stripeCheckoutSessionId: session.id,
+                stripeCustomerId: customerId,
+                invoiceId: session.metadata?.invoiceId, // Derived server-side, passed from checkout metadata
+              });
+            }
+            // Handle invoice payment (for any invoice, including overages)
+            else if (type === "invoice" && session.metadata?.invoiceId) {
+              await recordInvoicePayment({
+                invoiceId: session.metadata.invoiceId,
+                amountCents,
+                method: "stripe",
+                stripePaymentIntentId: paymentIntentId,
+                stripeCheckoutSessionId: session.id,
+                stripeCustomerId: customerId,
+              });
+            }
+
+            // Mark event as processed
+            // This uses unique constraint on stripeEventId to prevent duplicate processing
+            await tx.subscriptionEvent.create({
+              data: {
+                stripeEventId: event.id,
+                eventType: "checkout.session.completed",
+                stripeSubscriptionId: typeof session.subscription === "string" ? session.subscription : "",
+                businessId: session.metadata?.businessId || undefined,
+                clientId: session.metadata?.clientId || undefined,
+                dataSnapshot: JSON.stringify(session),
+              },
+            });
           });
-        } else if (type === "invoice" && session.metadata?.invoiceId) {
-          await recordInvoicePayment({
-            invoiceId: session.metadata.invoiceId,
-            amountCents,
-            method: "stripe",
-            stripePaymentIntentId: paymentIntentId,
-          });
+        } catch (error: any) {
+          // If unique constraint on stripeEventId is violated, it means we already processed this event
+          if (error?.code === "P2002" && error?.meta?.target?.includes("stripeEventId")) {
+            console.info(`Event ${event.id} already processed, skipping`);
+            // This is not an error - it's the idempotency mechanism working
+            return;
+          }
+          // For other errors, re-throw
+          throw error;
         }
         break;
       }
 
       case "checkout.session.async_payment_failed":
       case "checkout.session.expired": {
-        const session = event.data.object as Stripe.Checkout.Session;
-        const type = session.metadata?.type;
-        if (type === "appointment" && session.metadata?.appointmentId) {
-          await markAppointmentPaymentFailed(session.metadata.appointmentId);
-        } else if (type === "invoice" && session.metadata?.invoiceId) {
-          await markInvoicePaymentFailed(session.metadata.invoiceId);
+        // SECURITY: Use transaction for atomic idempotency
+        try {
+          await prisma.$transaction(async (tx) => {
+            const session = event.data.object as Stripe.Checkout.Session;
+            const type = session.metadata?.type;
+
+            // Handle both old "appointment" and new "individual_appointment" types
+            if ((type === "appointment" || type === "individual_appointment") && session.metadata?.appointmentId) {
+              await markAppointmentPaymentFailed(session.metadata.appointmentId);
+            } else if (type === "invoice" && session.metadata?.invoiceId) {
+              await markInvoicePaymentFailed(session.metadata.invoiceId);
+            }
+
+            // Mark event as processed
+            await tx.subscriptionEvent.create({
+              data: {
+                stripeEventId: event.id,
+                eventType: event.type,
+                stripeSubscriptionId: typeof session.subscription === "string" ? session.subscription : "",
+                businessId: session.metadata?.businessId || undefined,
+                clientId: session.metadata?.clientId || undefined,
+                dataSnapshot: JSON.stringify(session),
+              },
+            });
+          });
+        } catch (error: any) {
+          // If unique constraint on stripeEventId is violated, already processed
+          if (error?.code === "P2002" && error?.meta?.target?.includes("stripeEventId")) {
+            console.info(`Failure event ${event.id} already processed, skipping`);
+            return;
+          }
+          throw error;
         }
         break;
       }
@@ -96,6 +178,71 @@ export async function POST(request: NextRequest) {
             const { recordRefund } = await import("@/lib/payments");
             await recordRefund({ paymentId: payment.id, stripeRefundId: charge.refunds?.data?.[0]?.id ?? "" });
           }
+        }
+        break;
+      }
+
+      case "customer.subscription.created": {
+        const subscription = event.data.object as Stripe.Subscription;
+        // Check for duplicate processing
+        const existingEvent = await prisma.subscriptionEvent.findFirst({
+          where: { stripeEventId: event.id },
+        });
+        if (!existingEvent) {
+          await handleSubscriptionCreated(subscription);
+          // Record event for idempotency
+          await prisma.subscriptionEvent.create({
+            data: {
+              stripeEventId: event.id,
+              eventType: "customer.subscription.created",
+              stripeSubscriptionId: subscription.id,
+              businessId: subscription.metadata?.businessId || undefined,
+              clientId: subscription.metadata?.clientId || undefined,
+              dataSnapshot: JSON.stringify(subscription),
+            },
+          });
+        }
+        break;
+      }
+
+      case "customer.subscription.updated": {
+        const subscription = event.data.object as Stripe.Subscription;
+        const existingEvent = await prisma.subscriptionEvent.findFirst({
+          where: { stripeEventId: event.id },
+        });
+        if (!existingEvent) {
+          await handleSubscriptionUpdated(subscription);
+          await prisma.subscriptionEvent.create({
+            data: {
+              stripeEventId: event.id,
+              eventType: "customer.subscription.updated",
+              stripeSubscriptionId: subscription.id,
+              businessId: subscription.metadata?.businessId || undefined,
+              clientId: subscription.metadata?.clientId || undefined,
+              dataSnapshot: JSON.stringify(subscription),
+            },
+          });
+        }
+        break;
+      }
+
+      case "customer.subscription.deleted": {
+        const subscription = event.data.object as Stripe.Subscription;
+        const existingEvent = await prisma.subscriptionEvent.findFirst({
+          where: { stripeEventId: event.id },
+        });
+        if (!existingEvent) {
+          await handleSubscriptionDeleted(subscription);
+          await prisma.subscriptionEvent.create({
+            data: {
+              stripeEventId: event.id,
+              eventType: "customer.subscription.deleted",
+              stripeSubscriptionId: subscription.id,
+              businessId: subscription.metadata?.businessId || undefined,
+              clientId: subscription.metadata?.clientId || undefined,
+              dataSnapshot: JSON.stringify(subscription),
+            },
+          });
         }
         break;
       }

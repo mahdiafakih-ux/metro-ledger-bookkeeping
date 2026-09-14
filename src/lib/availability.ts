@@ -64,8 +64,8 @@ export async function getOpenSlotsForDate(dateISO: string, db: Db = prisma): Pro
     }),
   ]);
   const occupied = [
-    ...existingAppointments.map((a) => ({ start: a.scheduledStart, end: a.scheduledEnd })),
-    ...existingBlocks.map((b) => ({ start: b.startTime, end: b.endTime })),
+    ...existingAppointments.map((a: any) => ({ start: a.scheduledStart, end: a.scheduledEnd })),
+    ...existingBlocks.map((b: any) => ({ start: b.startTime, end: b.endTime })),
   ];
 
   const slots: SlotOption[] = [];
@@ -76,7 +76,7 @@ export async function getOpenSlotsForDate(dateISO: string, db: Db = prisma): Pro
 
     if (slotStart.getTime() < now.getTime() + minNoticeMs) continue;
 
-    const overlaps = occupied.some((a) => {
+    const overlaps = occupied.some((a: any) => {
       const bufferedStart = new Date(a.start.getTime() - buffer * 60000);
       const bufferedEnd = new Date(a.end.getTime() + buffer * 60000);
       return slotStart < bufferedEnd && slotEnd > bufferedStart;

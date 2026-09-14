@@ -38,7 +38,7 @@ export function MobileBottomNav() {
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
         <div className="grid grid-cols-5 items-center">
-          {TABS.slice(0, 2).map((tab) => (
+          {TABS.slice(0, 2).map((tab: any) => (
             <Link
               key={tab.href}
               href={tab.href}
@@ -63,7 +63,7 @@ export function MobileBottomNav() {
             </button>
           </div>
 
-          {TABS.slice(2).map((tab) => (
+          {TABS.slice(2).map((tab: any) => (
             <Link
               key={tab.href}
               href={tab.href}
@@ -99,7 +99,7 @@ export function MobileBottomNav() {
             <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-navy-200" />
             <p className="mb-3 px-1 text-sm font-bold text-navy-900">Quick Add</p>
             <div className="grid grid-cols-2 gap-3">
-              {QUICK_ADD_ITEMS.map((item) => (
+              {QUICK_ADD_ITEMS.map((item: any) => (
                 <Link
                   key={item.href}
                   href={item.href}

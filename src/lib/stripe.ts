@@ -25,3 +25,22 @@ export function isStripeConfigured() {
 export function getSiteUrl() {
   return process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 }
+
+/**
+ * Get all configured Stripe Price IDs
+ */
+export function getStripePriceIds() {
+  return {
+    individual: process.env.STRIPE_PRICE_INDIVIDUAL || "",
+    business30: process.env.STRIPE_PRICE_BUSINESS30 || "",
+    unlimited: process.env.STRIPE_PRICE_BUSINESS_UNLIMITED || "",
+  };
+}
+
+/**
+ * Validate that all required Stripe Price IDs are configured
+ */
+export function areStripePricesConfigured() {
+  const prices = getStripePriceIds();
+  return prices.individual && prices.business30 && prices.unlimited;
+}

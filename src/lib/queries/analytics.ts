@@ -50,9 +50,9 @@ export async function getRevenueByService() {
 }
 
 export async function getRevenueByPricingPlan() {
-  const businesses = await prisma.business.findMany({ where: { status: "active" }, select: { packageKey: true, monthlyRevenueCents: true } });
+  const businesses = await prisma.business.findMany({ where: { status: "active" }, select: { currentPlanKey: true, monthlyRevenueCents: true } });
   const plans = await prisma.pricingPlan.findMany();
-  const planNames = new Map(plans.map((p) => [p.key, p.name]));
+  const planNames = new Map(plans.map((p: any) => [p.key, p.name]));
 
   const individualAgg = await prisma.appointment.aggregate({
     where: { status: "completed", businessId: null },
@@ -62,10 +62,10 @@ export async function getRevenueByPricingPlan() {
   const map = new Map<string, number>();
   map.set("Individual", (individualAgg._sum.totalAmountCents ?? 0) / 100);
   for (const b of businesses) {
-    const name = planNames.get(b.packageKey) ?? "Other";
-    map.set(name, (map.get(name) ?? 0) + b.monthlyRevenueCents / 100);
+    const name = (planNames.get(b.currentPlanKey ?? "") ?? "Other") as string;
+    map.set(name, (map.get(name) ?? 0) + (b.monthlyRevenueCents ?? 0) / 100);
   }
-  return Array.from(map.entries()).map(([label, value]) => ({ label, value }));
+  return Array.from(map.entries()).map(([label, value]: any) => ({ label, value }));
 }
 
 export async function getRevenueByClient(limit = 8) {
@@ -75,7 +75,7 @@ export async function getRevenueByClient(limit = 8) {
     take: limit,
     select: { name: true, totalRevenueCents: true },
   });
-  return clients.map((c) => ({ label: c.name, revenue: c.totalRevenueCents / 100 }));
+  return clients.map((c: any) => ({ label: c.name, revenue: c.totalRevenueCents / 100 }));
 }
 
 export async function getRevenueByCompany(limit = 8) {
@@ -85,7 +85,7 @@ export async function getRevenueByCompany(limit = 8) {
     take: limit,
     select: { companyName: true, monthlyRevenueCents: true },
   });
-  return businesses.map((b) => ({ label: b.companyName, revenue: b.monthlyRevenueCents / 100 }));
+  return businesses.map((b: any) => ({ label: b.companyName, revenue: b.monthlyRevenueCents / 100 }));
 }
 
 export async function getRecurringRevenueCents() {

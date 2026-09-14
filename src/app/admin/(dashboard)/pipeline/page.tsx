@@ -17,7 +17,7 @@ export default async function PipelinePage() {
   const weightedMonthly = openOpps.reduce((sum, o) => sum + (o.potentialMonthlyCents * o.probability) / 100, 0);
   const avgDealValue = opportunities.length > 0 ? opportunities.reduce((s, o) => s + o.dealValueCents, 0) / opportunities.length : 0;
 
-  const funnel = PIPELINE_STAGES.map((stage) => ({
+  const funnel = PIPELINE_STAGES.map((stage: any) => ({
     stage,
     label: PIPELINE_STAGE_LABELS[stage],
     count: opportunities.filter((o) => o.stage === stage).length,

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import type { Invoice } from "@prisma/client";
 import { getTotalEarnedCents } from "@/lib/queries/dashboard";
 import { checkAndRecordMilestones } from "@/lib/milestones";
 import { createNotification } from "@/lib/actions/notifications";
@@ -15,35 +16,85 @@ export async function recordAppointmentPayment(input: {
   method: string;
   stripePaymentIntentId?: string;
   stripeChargeId?: string;
+  stripeCheckoutSessionId?: string;
+  stripeCustomerId?: string;
+  invoiceId?: string;  // Invoice linked to this appointment payment, if any
 }) {
-  const appointment = await prisma.appointment.findUnique({ where: { id: input.appointmentId } });
+  const appointment = await prisma.appointment.findUnique({
+    where: { id: input.appointmentId },
+    include: { invoice: true },
+  });
   if (!appointment) return;
 
-  const existingPayment = input.stripePaymentIntentId
-    ? await prisma.payment.findFirst({ where: { stripePaymentIntentId: input.stripePaymentIntentId, appointmentId: appointment.id } })
-    : null;
-  if (existingPayment) return; // idempotent — webhook may retry the same event
+  // SECURITY: Check for duplicate using Stripe identifiers with unique constraint
+  // If stripePaymentIntentId is provided and already exists in DB, skip
+  if (input.stripePaymentIntentId) {
+    const existingPayment = await prisma.payment.findFirst({
+      where: {
+        stripePaymentIntentId: input.stripePaymentIntentId,
+        appointmentId: appointment.id,
+      },
+    });
+    if (existingPayment) return; // idempotent — already processed
+  }
 
-  await prisma.payment.create({
-    data: {
-      appointmentId: appointment.id,
-      amountCents: input.amountCents,
-      method: input.method,
-      status: "succeeded",
-      stripePaymentIntentId: input.stripePaymentIntentId ?? "",
-      stripeChargeId: input.stripeChargeId ?? "",
-    },
+  // SECURITY: Use transaction to atomically:
+  // 1. Create Payment
+  // 2. Update Appointment
+  // 3. Update Invoice (if linked)
+  // This ensures consistency and prevents partial updates
+  const result = await prisma.$transaction(async (tx) => {
+    // Create payment record
+    const payment = await tx.payment.create({
+      data: {
+        appointmentId: appointment.id,
+        invoiceId: input.invoiceId || appointment.invoiceId || undefined, // Use passed invoiceId or appointment's linked invoice
+        amountCents: input.amountCents,
+        method: input.method,
+        status: "succeeded",
+        stripePaymentIntentId: input.stripePaymentIntentId || null,
+        stripeChargeId: input.stripeChargeId ?? "",
+        stripeCheckoutSessionId: input.stripeCheckoutSessionId || null,
+        stripeCustomerId: input.stripeCustomerId ?? "",
+        paidAt: new Date(),
+      },
+    });
+
+    // Update appointment payment state
+    const newAmountPaid = appointment.amountPaidCents + input.amountCents;
+    const newAppointmentStatus = newAmountPaid >= appointment.totalAmountCents ? "paid" : "partially_paid";
+
+    const updatedAppointment = await tx.appointment.update({
+      where: { id: appointment.id },
+      data: { amountPaidCents: newAmountPaid, paymentStatus: newAppointmentStatus },
+    });
+
+    // Update related invoice if one is linked
+    let updatedInvoice: Invoice | null = null;
+    const invoiceIdToUpdate = input.invoiceId || appointment.invoiceId;
+    if (invoiceIdToUpdate) {
+      const invoice = await tx.invoice.findUnique({
+        where: { id: invoiceIdToUpdate },
+        include: { items: true },
+      });
+
+      if (invoice) {
+        const invoiceTotal = invoice.items.reduce((sum: number, i: any) => sum + i.amountCents, 0) + invoice.taxCents;
+        const newInvoiceAmountPaid = invoice.amountPaidCents + input.amountCents;
+        const newInvoiceStatus = newInvoiceAmountPaid >= invoiceTotal ? "paid" : "partially_paid";
+
+        updatedInvoice = await tx.invoice.update({
+          where: { id: invoiceIdToUpdate },
+          data: { amountPaidCents: newInvoiceAmountPaid, status: newInvoiceStatus },
+        });
+      }
+    }
+
+    return { payment, appointment: updatedAppointment, invoice: updatedInvoice };
   });
 
-  const newAmountPaid = appointment.amountPaidCents + input.amountCents;
-  const newStatus = newAmountPaid >= appointment.totalAmountCents ? "paid" : "partially_paid";
-
-  await prisma.appointment.update({
-    where: { id: appointment.id },
-    data: { amountPaidCents: newAmountPaid, paymentStatus: newStatus },
-  });
-
-  if (newStatus === "paid") {
+  // Post-transaction: Send notifications only after core transaction succeeds
+  if (result.appointment.paymentStatus === "paid") {
     await syncRevenueForAppointment(appointment.id);
   }
 
@@ -99,49 +150,79 @@ export async function recordInvoicePayment(input: {
   method: string;
   stripePaymentIntentId?: string;
   stripeChargeId?: string;
+  stripeCheckoutSessionId?: string;
+  stripeCustomerId?: string;
 }) {
-  const invoice = await prisma.invoice.findUnique({ where: { id: input.invoiceId }, include: { items: true } });
+  const invoice = await prisma.invoice.findUnique({
+    where: { id: input.invoiceId },
+    include: { items: true },
+  });
   if (!invoice) return;
 
-  const existingPayment = input.stripePaymentIntentId
-    ? await prisma.payment.findFirst({ where: { stripePaymentIntentId: input.stripePaymentIntentId, invoiceId: invoice.id } })
-    : null;
-  if (existingPayment) return;
+  // SECURITY: Check for duplicate using Stripe identifiers
+  if (input.stripePaymentIntentId) {
+    const existingPayment = await prisma.payment.findFirst({
+      where: {
+        stripePaymentIntentId: input.stripePaymentIntentId,
+        invoiceId: invoice.id,
+      },
+    });
+    if (existingPayment) return; // idempotent — already processed
+  }
 
-  await prisma.payment.create({
-    data: {
-      invoiceId: invoice.id,
-      amountCents: input.amountCents,
-      method: input.method,
-      status: "succeeded",
-      stripePaymentIntentId: input.stripePaymentIntentId ?? "",
-      stripeChargeId: input.stripeChargeId ?? "",
-    },
+  // SECURITY: Use transaction to atomically update invoice and create payment
+  const result = await prisma.$transaction(async (tx) => {
+    const invoiceTotal = invoice.items.reduce((sum: number, i: any) => sum + i.amountCents, 0) + invoice.taxCents;
+    const newAmountPaid = invoice.amountPaidCents + input.amountCents;
+    const newStatus = newAmountPaid >= invoiceTotal ? "paid" : "partially_paid";
+
+    // Create payment record
+    const payment = await tx.payment.create({
+      data: {
+        invoiceId: invoice.id,
+        amountCents: input.amountCents,
+        method: input.method,
+        status: "succeeded",
+        stripePaymentIntentId: input.stripePaymentIntentId || null,
+        stripeChargeId: input.stripeChargeId ?? "",
+        stripeCheckoutSessionId: input.stripeCheckoutSessionId || null,
+        stripeCustomerId: input.stripeCustomerId ?? "",
+        paidAt: new Date(),
+      },
+    });
+
+    // Update invoice
+    const updatedInvoice = await tx.invoice.update({
+      where: { id: invoice.id },
+      data: { amountPaidCents: newAmountPaid, status: newStatus },
+    });
+
+    // Handle revenue entry creation if invoice is now fully paid
+    if (newStatus === "paid") {
+      const existingEntry = await tx.revenueEntry.findFirst({ where: { invoiceId: invoice.id } });
+      if (!existingEntry) {
+        await tx.revenueEntry.create({
+          data: {
+            amountCents: invoiceTotal,
+            source: "invoice",
+            description: `Invoice ${invoice.invoiceNumber} — ${invoice.clientName}`,
+            invoiceId: invoice.id,
+          },
+        });
+      }
+    }
+
+    return { payment, invoice: updatedInvoice };
   });
 
-  const invoiceTotal = invoice.items.reduce((sum, i) => sum + i.amountCents, 0) + invoice.taxCents;
+  // Post-transaction: Handle milestones and notifications
+  const invoiceTotal = invoice.items.reduce((sum: number, i: any) => sum + i.amountCents, 0) + invoice.taxCents;
   const newAmountPaid = invoice.amountPaidCents + input.amountCents;
   const newStatus = newAmountPaid >= invoiceTotal ? "paid" : "partially_paid";
 
-  await prisma.invoice.update({
-    where: { id: invoice.id },
-    data: { amountPaidCents: newAmountPaid, status: newStatus },
-  });
-
   if (newStatus === "paid") {
-    const existingEntry = await prisma.revenueEntry.findFirst({ where: { invoiceId: invoice.id } });
-    if (!existingEntry) {
-      const beforeTotal = await getTotalEarnedCents();
-      await prisma.revenueEntry.create({
-        data: {
-          amountCents: invoiceTotal,
-          source: "invoice",
-          description: `Invoice ${invoice.invoiceNumber} — ${invoice.clientName}`,
-          invoiceId: invoice.id,
-        },
-      });
-      await checkAndRecordMilestones(beforeTotal, beforeTotal + invoiceTotal);
-    }
+    const beforeTotal = await getTotalEarnedCents();
+    await checkAndRecordMilestones(beforeTotal - invoiceTotal, beforeTotal);
   }
 
   await createNotification({

@@ -38,7 +38,7 @@ export function InvoiceForm({ clients, businesses }: { clients: ClientOption[]; 
   const total = useMemo(() => items.reduce((sum, i) => sum + i.quantity * i.unitAmountDollars, 0), [items]);
 
   function updateItem(idx: number, patch: Partial<InvoiceItemInput>) {
-    setItems((prev) => prev.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
+    setItems((prev: any) => prev.map((it, i) => (i === idx ? { ...it, ...patch } : it)));
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -91,7 +91,7 @@ export function InvoiceForm({ clients, businesses }: { clients: ClientOption[]; 
       <div>
         <div className="mb-2 flex items-center justify-between">
           <p className="text-sm font-bold uppercase tracking-wide text-navy-400">Line Items</p>
-          <Button type="button" size="sm" variant="subtle" onClick={() => setItems((prev) => [...prev, { description: "", type: "other_service", quantity: 1, unitAmountDollars: 0 }])}>
+          <Button type="button" size="sm" variant="subtle" onClick={() => setItems((prev: any) => [...prev, { description: "", type: "other_service", quantity: 1, unitAmountDollars: 0 }])}>
             <Plus className="h-4 w-4" /> Add Item
           </Button>
         </div>
@@ -105,7 +105,7 @@ export function InvoiceForm({ clients, businesses }: { clients: ClientOption[]; 
               </Select>
               <Input className="col-span-1" type="number" min={1} value={item.quantity} onChange={(e) => updateItem(idx, { quantity: Number(e.target.value) })} />
               <Input className="col-span-2" type="number" min={0} step="0.01" value={item.unitAmountDollars} onChange={(e) => updateItem(idx, { unitAmountDollars: Number(e.target.value) })} />
-              <button type="button" onClick={() => setItems((prev) => prev.filter((_, i) => i !== idx))} className="col-span-1 flex items-center justify-center text-navy-300 hover:text-danger-600">
+              <button type="button" onClick={() => setItems((prev: any) => prev.filter((_, i) => i !== idx))} className="col-span-1 flex items-center justify-center text-navy-300 hover:text-danger-600">
                 <Trash2 className="h-4 w-4" />
               </button>
             </div>

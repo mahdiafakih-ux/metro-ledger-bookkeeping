@@ -19,9 +19,9 @@ export const metadata: Metadata = {
 };
 
 const COMPARISON_ROWS = (plans: Awaited<ReturnType<typeof getActivePricingPlans>>) => [
-  { label: "Statutory notarial fee", values: plans.map((p) => `${formatCents(p.statutoryFeeCents, { showCents: false })}/act`) },
-  { label: "Appointments included", values: plans.map((p) => (p.appointmentsIncluded ? `${p.appointmentsIncluded}/month` : p.billingPeriod === "monthly" ? "Unlimited*" : "1")) },
-  { label: "Additional appointment rate", values: plans.map((p) => (p.overageFeeCents ? formatCents(p.overageFeeCents, { showCents: false }) : "—")) },
+  { label: "Statutory notarial fee", values: plans.map((p: any) => `${formatCents(p.statutoryFeeCents, { showCents: false })}/act`) },
+  { label: "Appointments included", values: plans.map((p: any) => (p.appointmentsIncluded ? `${p.appointmentsIncluded}/month` : p.billingPeriod === "monthly" ? "Unlimited*" : "1")) },
+  { label: "Additional appointment rate", values: plans.map((p: any) => (p.overageFeeCents ? formatCents(p.overageFeeCents, { showCents: false }) : "—")) },
   { label: "In-person appointments", values: plans.map(() => true) },
   { label: "Remote/online (where eligible)", values: plans.map(() => true) },
   { label: "Priority scheduling", values: [false, true, true] },
@@ -43,7 +43,7 @@ export default async function PricingPage() {
       />
 
       <div className="mt-14 grid gap-8 lg:grid-cols-3">
-        {plans.map((plan) => (
+        {plans.map((plan: any) => (
           <PricingCard key={plan.key} plan={plan} />
         ))}
       </div>
@@ -57,7 +57,7 @@ export default async function PricingPage() {
             <thead>
               <tr className="bg-navy-50">
                 <th className="px-5 py-4 text-left font-semibold text-navy-500">Feature</th>
-                {plans.map((p) => (
+                {plans.map((p: any) => (
                   <th key={p.key} className="px-5 py-4 text-left font-semibold text-navy-900">
                     {p.name}
                   </th>
@@ -68,7 +68,7 @@ export default async function PricingPage() {
               {rows.map((row, i) => (
                 <tr key={row.label} className={i % 2 === 0 ? "bg-white" : "bg-navy-50/50"}>
                   <td className="px-5 py-4 font-medium text-navy-700">{row.label}</td>
-                  {row.values.map((v, idx) => (
+                  {row.values.map((v: any, idx: any) => (
                     <td key={idx} className="px-5 py-4">
                       {typeof v === "boolean" ? (
                         v ? (

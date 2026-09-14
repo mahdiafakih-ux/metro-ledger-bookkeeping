@@ -25,7 +25,7 @@ export const getActivePricingPlans = cache(async () => {
     where: { isActive: true },
     orderBy: { sortOrder: "asc" },
   });
-  return plans.map((p) => ({ ...p, features: JSON.parse(p.features) as string[] }));
+  return plans.map((p: any) => ({ ...p, features: JSON.parse(p.features) as string[] }));
 });
 
 export const getAvailability = cache(async () => {

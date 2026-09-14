@@ -29,7 +29,7 @@ export function Navbar() {
         </Link>
 
         <nav className="hidden items-center gap-1 lg:flex">
-          {LINKS.map((link) => (
+          {LINKS.map((link: any) => (
             <Link
               key={link.href}
               href={link.href}
@@ -64,7 +64,7 @@ export function Navbar() {
       {open && (
         <div className="border-t border-navy-100 bg-white px-4 py-4 lg:hidden">
           <nav className="flex flex-col gap-1">
-            {LINKS.map((link) => (
+            {LINKS.map((link: any) => (
               <Link
                 key={link.href}
                 href={link.href}
