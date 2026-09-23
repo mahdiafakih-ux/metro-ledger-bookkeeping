@@ -139,3 +139,161 @@ body {
     background: white !important;
   }
 }
+
+/* ============================================================
+   Homepage motion system (see components/site/home/*)
+   Everything here is presentation-only. Animated properties are
+   transform / opacity; heavy effects are gated to desktop in JS.
+   ============================================================ */
+
+/* Hero entrance items are hidden until GSAP reveals them, so the server HTML
+   doesn't flash before hydration. Only when motion is allowed; a <noscript>
+   override on the page keeps them visible without JavaScript. */
+@media (prefers-reduced-motion: no-preference) {
+  [data-hero-item],
+  [data-hero-headline],
+  [data-hero-sub],
+  [data-hero-visual] {
+    opacity: 0;
+  }
+}
+
+/* Soft light orbs: pre-softened radial gradients (no live blur filter). */
+.hero-orb {
+  position: absolute;
+  border-radius: 9999px;
+  background: radial-gradient(closest-side, var(--orb, rgba(59, 107, 255, 0.35)), transparent);
+  pointer-events: none;
+}
+
+/* Blueprint grid, faded out toward the edges. */
+.hero-grid {
+  background-image:
+    linear-gradient(rgba(155, 182, 255, 0.075) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(155, 182, 255, 0.075) 1px, transparent 1px);
+  background-size: 56px 56px;
+  -webkit-mask-image: radial-gradient(ellipse 75% 65% at 50% 38%, #000 25%, transparent 75%);
+  mask-image: radial-gradient(ellipse 75% 65% at 50% 38%, #000 25%, transparent 75%);
+}
+.light-grid {
+  background-image:
+    linear-gradient(rgba(35, 84, 235, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(35, 84, 235, 0.06) 1px, transparent 1px);
+  background-size: 56px 56px;
+  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 30%, #000 20%, transparent 75%);
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 30%, #000 20%, transparent 75%);
+}
+.hero-scan {
+  background: linear-gradient(90deg, transparent, rgba(155, 182, 255, 0.09), transparent);
+}
+
+/* Stroke-draw helpers (pathLength=1 on the element). Drawn by default so
+   reduced-motion / no-JS users see the finished artwork. */
+.doc-stroke {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 0;
+}
+.hero-ring,
+.hero-underline {
+  opacity: 0;
+}
+
+/* Headline word masks: a little breathing room so descenders aren't clipped. */
+.hero-word-mask,
+.cta-word-mask {
+  padding: 0.06em 0.03em 0.14em;
+  margin: -0.06em -0.03em -0.14em;
+}
+.hero-accent-word {
+  background: linear-gradient(100deg, #c8d7ff 0%, #6690ff 55%, #3b6bff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Buttons: one-shot sheen + cursor light (vars set by the magnetic handler). */
+.btn-sheen {
+  position: absolute;
+  inset: 0;
+  width: 45%;
+  transform: translateX(-160%) skewX(-18deg);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+  pointer-events: none;
+}
+.btn-sheen-dark {
+  background: linear-gradient(90deg, transparent, rgba(59, 107, 255, 0.18), transparent);
+}
+.btn-spot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  background: radial-gradient(140px circle at var(--mx, 50%) var(--my, 50%), rgba(255, 255, 255, 0.28), transparent 70%);
+}
+.btn-spot:hover::after {
+  opacity: 1;
+}
+
+/* Cursor-following card light. */
+.spotlight::after,
+.spot-overlay {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  background: radial-gradient(320px circle at var(--mx, 50%) var(--my, 50%), var(--spot-color, rgba(59, 107, 255, 0.1)), transparent 70%);
+}
+.spotlight:hover::after,
+[data-spotlight]:hover > .spot-overlay {
+  opacity: 1;
+}
+
+/* How It Works: stacked "deck" layout, only while the pinned sequence runs
+   (the class is added by JS). Otherwise the steps are a normal list. */
+.steps-stage.is-stacked {
+  height: 470px;
+}
+.steps-stage.is-stacked > .step-card {
+  position: absolute;
+  inset: 0 0 auto 0;
+  margin: 0;
+  will-change: transform, opacity;
+}
+
+/* Recommended plan: slow light tracing the border + soft glow. */
+.price-ring {
+  position: absolute;
+  inset: -1.5px;
+  border-radius: calc(1.5rem + 1.5px);
+  overflow: hidden;
+  pointer-events: none;
+}
+.price-ring-spin {
+  position: absolute;
+  inset: -60%;
+  background: conic-gradient(from 0deg, transparent 0 58%, rgba(155, 182, 255, 0.95) 72%, rgba(59, 107, 255, 0.9) 78%, transparent 92%);
+}
+.price-glow {
+  position: absolute;
+  inset: 8% 6% -6%;
+  border-radius: 2rem;
+  pointer-events: none;
+  background: radial-gradient(closest-side, rgba(59, 107, 255, 0.45), transparent);
+  transform: translateY(8%);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .price-ring-spin {
+    animation: price-ring-spin 7s linear infinite;
+  }
+}
+@keyframes price-ring-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

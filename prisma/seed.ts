@@ -1,3 +1,4 @@
+import "./load-env"; // must be first: loads .env and blocks non-local DBs
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { DEFAULT_PRICING_PLANS } from "../src/lib/pricing-defaults";

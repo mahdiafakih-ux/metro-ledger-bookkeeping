@@ -5,7 +5,7 @@ A production-ready notary business management and booking platform built with Ne
 ## 🚀 Features
 
 ### Public Website
-- **Modern Homepage** with hero section and trust indicators
+- **Modern Homepage** with hero section and trust indicators, animated with GSAP + ScrollTrigger (pinned scroll sections, respects `prefers-reduced-motion`)
 - **Services Page** listing all notarial services
 - **Business Solutions** page targeting enterprise clients
 - **Dynamic Pricing Page** with editable pricing from admin
@@ -77,11 +77,26 @@ npx prisma generate
 # Apply migrations
 npx prisma migrate deploy
 
+# Seed business settings, pricing plans and your admin user (local DB only)
+npm run db:seed
+
+# Confirm the BusinessSettings "default" row exists
+npm run db:check
+
 # Start development server
 npm run dev
 
 # Open http://localhost:3000
 ```
+
+### Seeding safely
+
+`npm run db:seed` and `npm run db:check` run as standalone `tsx` scripts, so
+they load the project's `.env` themselves (`prisma/load-env.ts`). Before
+touching the database they print the target host/database (never the
+password) and **refuse to run against any non-local database** unless
+`ALLOW_REMOTE_DB=true` is set for that one command. This keeps a local seed
+from ever writing to production Supabase by accident.
 
 ### Environment Variables (.env.local)
 
@@ -156,6 +171,9 @@ git push origin main
 
 # 3. Apply migrations
 npx prisma migrate deploy
+
+# 4. Seed production once (creates the admin user; the seed refuses remote DBs without this flag)
+ALLOW_REMOTE_DB=true npm run db:seed
 ```
 
 ### Database Options
