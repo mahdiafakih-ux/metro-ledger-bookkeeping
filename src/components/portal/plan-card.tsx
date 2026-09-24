@@ -92,7 +92,8 @@ export function PlanCard({ account, showActions = true }: { account: PortalAccou
 
   if (plan.kind === "unlimited") {
     return (
-      <Panel className="relative overflow-hidden border-navy-900 bg-navy-950 text-white">
+      // Not <Panel>: cn() is clsx (no tailwind-merge), so Panel's bg-white would win.
+      <section className="relative overflow-hidden rounded-xl border border-navy-900 bg-navy-950 text-white shadow-[0_1px_2px_rgba(10,17,40,0.04)]">
         <div aria-hidden className="pointer-events-none absolute -right-16 -top-20 h-56 w-56 rounded-full bg-accent-600/25 blur-3xl" />
         <div className="relative p-5 sm:p-6">
           <div className="flex items-start justify-between gap-3">
@@ -120,7 +121,7 @@ export function PlanCard({ account, showActions = true }: { account: PortalAccou
           </p>
         </div>
         <PlanFooter account={account} showActions={showActions} dark />
-      </Panel>
+      </section>
     );
   }
 

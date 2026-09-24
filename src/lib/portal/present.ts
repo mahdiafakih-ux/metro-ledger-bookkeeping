@@ -122,3 +122,8 @@ export function initials(name: string) {
 export function appointmentTypeLabel(type: string) {
   return type === "remote" ? "Remote / online" : "In person";
 }
+
+/** Append a period without doubling one ("Lakeshore Title Co." stays as is). */
+export function sentence(text: string) {
+  return `${text.replace(/[.\s]+$/, "")}.`;
+}

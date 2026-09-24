@@ -3,7 +3,7 @@ import { ArrowRight, Building2, FileText, Lock, ShieldCheck } from "lucide-react
 import { prisma } from "@/lib/db";
 import { getPortalAccount, invoiceScope } from "@/lib/portal/account";
 import { getOutstanding } from "@/lib/portal/queries";
-import { invoiceStatus, invoiceTotals, subscriptionStatus } from "@/lib/portal/present";
+import { invoiceStatus, invoiceTotals, subscriptionStatus, sentence } from "@/lib/portal/present";
 import { isStripeConfigured } from "@/lib/stripe";
 import { getBusinessSettings } from "@/lib/settings";
 import { formatCents } from "@/lib/money";
@@ -36,7 +36,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
     <div className="portal-enter space-y-6">
       <PageHeader
         title="Billing"
-        description={account.plan.owner === "business" ? `Plan and billing for ${account.business?.companyName}.` : "Your plan, balance and billing settings."}
+        description={account.plan.owner === "business" ? `Plan and billing for ${sentence(account.business?.companyName ?? "")}` : "Your plan, balance and billing settings."}
       />
 
       {sp.cancelled === "true" && (

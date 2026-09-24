@@ -2,6 +2,7 @@ import Link from "next/link";
 import { CalendarCheck2, CalendarPlus, CalendarX2, Heart, Plus, RotateCcw, Users } from "lucide-react";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/db";
+import { sentence } from "@/lib/portal/present";
 import { appointmentScope, getPortalAccount, MAX_PREFERRED_NOTARIES } from "@/lib/portal/account";
 import { getPreferredNotaries, getWorkedWithNotaries } from "@/lib/portal/queries";
 import { PREFERENCE_DISCLAIMER } from "@/lib/portal/constants";
@@ -69,7 +70,7 @@ export default async function AppointmentsPage({ searchParams }: { searchParams:
     <div className="portal-enter space-y-6">
       <PageHeader
         title="Appointments"
-        description={account.canViewBusiness ? `All appointments for ${account.business?.companyName}.` : "Your notary appointments, past and upcoming."}
+        description={account.canViewBusiness ? `All appointments for ${sentence(account.business?.companyName ?? "")}` : "Your notary appointments, past and upcoming."}
         actions={
           account.canRequest ? (
             <PortalLink href="/portal/request">

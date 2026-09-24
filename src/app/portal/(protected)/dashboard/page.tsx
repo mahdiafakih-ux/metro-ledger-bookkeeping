@@ -16,6 +16,7 @@ import { getDashboardData, type ActivityItem } from "@/lib/portal/queries";
 import { formatCents } from "@/lib/money";
 import { formatDateOnly, formatDetroitDate, formatDetroitDateTime, getZonedParts } from "@/lib/tz";
 import { PREFERENCE_DISCLAIMER } from "@/lib/portal/constants";
+import { sentence } from "@/lib/portal/present";
 import { AppointmentRow, NextAppointmentCard } from "@/components/portal/appointment-views";
 import { PlanCard } from "@/components/portal/plan-card";
 import { AddPreferredButton } from "@/components/portal/notary-actions";
@@ -42,7 +43,7 @@ export default async function PortalDashboard() {
   return (
     <div className="portal-enter space-y-6 lg:space-y-8">
       <PageHeader
-        title={`${greeting()}, ${name.replace(/[.\s]+$/, "")}.`}
+        title={`${greeting()}, ${sentence(name)}`}
         description="Here's what's happening with your Notar-E account."
         actions={
           account.canRequest ? (
