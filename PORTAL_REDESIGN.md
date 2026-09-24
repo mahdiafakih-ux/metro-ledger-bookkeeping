@@ -49,6 +49,18 @@ Additive only: 2 new tables, 4 nullable or defaulted columns on `Appointment`, 1
 
 Verification: all 10 migrations applied in order to a fresh PostgreSQL 16 database. All 29 models and 365 columns match `schema.prisma` in type and nullability.
 
+## Staging database for Vercel Preview
+
+The Preview must **never** use the production `DATABASE_URL`.
+
+1. Create a **separate** Supabase project, `notare-staging`. Use a new project, not a branch of production.
+2. In Vercel → Settings → Environment Variables, make every `DATABASE_URL` entry production-only, then add a **Preview**-only `DATABASE_URL` pointing at the staging project's pooled connection string (port 6543, `?pgbouncer=true`).
+3. From your machine, using the staging **direct** connection string (port 5432):
+   - `DATABASE_URL="<staging direct>" npx prisma migrate deploy`
+   - `ALLOW_REMOTE_DB=true DATABASE_URL="<staging direct>" npm run db:seed`
+   - `ALLOW_REMOTE_DB=true STAGING_CONFIRM_HOST=<staging host> FIXTURE_EMAIL=<your inbox> DATABASE_URL="<staging direct>" npm run db:staging-fixtures`
+4. `db:staging-fixtures` refuses to run unless the host is confirmed **and** the database contains no real clients, so it can't run against production.
+
 ## Deploy (after approval)
 
 1. **Back up production.** In Supabase: Database → Backups, or run `pg_dump`.

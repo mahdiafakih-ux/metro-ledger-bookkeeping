@@ -13,7 +13,8 @@
     "db:check": "tsx prisma/check-settings.ts",
     "db:studio": "prisma studio",
     "db:reset": "prisma migrate reset --force",
-    "db:tz-audit": "tsx prisma/tz-audit.ts"
+    "db:tz-audit": "tsx prisma/tz-audit.ts",
+    "db:staging-fixtures": "tsx prisma/staging-fixtures.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
