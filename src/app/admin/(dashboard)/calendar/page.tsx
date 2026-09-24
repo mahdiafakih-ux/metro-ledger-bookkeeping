@@ -10,14 +10,14 @@ import {
   format,
   isSameMonth,
   isSameDay,
-  isToday,
 } from "date-fns";
 import { ChevronLeft, ChevronRight, Plus, MapPin, Video, Ban } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { LinkButton } from "@/components/ui/button";
 import { Badge, STATUS_TONES } from "@/components/ui/badge";
 import { BlockTimeButton, BlockedTimeList } from "@/components/admin/block-time-form";
-import { cn, formatTime, titleCase } from "@/lib/utils";
+import { cn, titleCase } from "@/lib/utils";
+import { fromZonedWallDate, toZonedWallDate } from "@/lib/tz";
 import { formatCents } from "@/lib/money";
 
 type AdminBlockRow = { id: string; startTime: Date; endTime: Date; reason: string };
@@ -31,7 +31,10 @@ export default async function CalendarPage({
 }) {
   const sp = await searchParams;
   const view = (sp.view as View) || "month";
-  const anchor = sp.date ? new Date(`${sp.date}T00:00:00`) : new Date();
+  // The grid works in America/Detroit "wall" dates (see toZonedWallDate) so
+  // day boundaries and times are correct regardless of the server's TZ.
+  const todayWall = toZonedWallDate(new Date());
+  const anchor = sp.date && /^\d{4}-\d{2}-\d{2}$/.test(sp.date) ? new Date(`${sp.date}T00:00:00`) : todayWall;
 
   let rangeStart: Date, rangeEnd: Date;
   if (view === "month") {
@@ -47,16 +50,28 @@ export default async function CalendarPage({
     rangeEnd.setHours(23, 59, 59, 999);
   }
 
-  const [appointments, adminBlocks] = await Promise.all([
+  const queryStart = fromZonedWallDate(rangeStart);
+  const queryEnd = fromZonedWallDate(rangeEnd);
+  const [rawAppointments, rawBlocks] = await Promise.all([
     prisma.appointment.findMany({
-      where: { scheduledStart: { gte: rangeStart, lte: rangeEnd }, status: { not: "cancelled" } },
+      where: { scheduledStart: { gte: queryStart, lte: queryEnd }, status: { not: "cancelled" } },
       orderBy: { scheduledStart: "asc" },
     }),
     prisma.adminBlock.findMany({
-      where: { startTime: { lte: rangeEnd }, endTime: { gte: rangeStart } },
+      where: { startTime: { lte: queryEnd }, endTime: { gte: queryStart } },
       orderBy: { startTime: "asc" },
     }),
   ]);
+  const appointments = rawAppointments.map((a) => ({
+    ...a,
+    scheduledStart: toZonedWallDate(a.scheduledStart),
+    scheduledEnd: toZonedWallDate(a.scheduledEnd),
+  }));
+  const adminBlocks = rawBlocks.map((b) => ({
+    ...b,
+    startTime: toZonedWallDate(b.startTime),
+    endTime: toZonedWallDate(b.endTime),
+  }));
 
   const prevDate = view === "month" ? addMonths(anchor, -1) : view === "week" ? addWeeks(anchor, -1) : addDays(anchor, -1);
   const nextDate = view === "month" ? addMonths(anchor, 1) : view === "week" ? addWeeks(anchor, 1) : addDays(anchor, 1);
@@ -80,7 +95,7 @@ export default async function CalendarPage({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-1 rounded-lg border border-navy-100 bg-white p-1">
           <Link href={`/admin/calendar?view=${view}&date=${dateParam(prevDate)}`} className="flex h-8 w-8 items-center justify-center rounded-md text-navy-500 hover:bg-navy-50"><ChevronLeft className="h-4 w-4" /></Link>
-          <Link href={`/admin/calendar?view=${view}&date=${dateParam(new Date())}`} className="px-3 text-sm font-medium text-navy-700 hover:text-accent-600">Today</Link>
+          <Link href={`/admin/calendar?view=${view}&date=${dateParam(todayWall)}`} className="px-3 text-sm font-medium text-navy-700 hover:text-accent-600">Today</Link>
           <Link href={`/admin/calendar?view=${view}&date=${dateParam(nextDate)}`} className="flex h-8 w-8 items-center justify-center rounded-md text-navy-500 hover:bg-navy-50"><ChevronRight className="h-4 w-4" /></Link>
         </div>
         <div className="flex gap-1 rounded-lg border border-navy-100 bg-white p-1">
@@ -96,20 +111,22 @@ export default async function CalendarPage({
         </div>
       </div>
 
-      {view === "month" && <MonthGrid anchor={anchor} rangeStart={rangeStart} appointments={appointments} adminBlocks={adminBlocks} />}
-      {view === "week" && <WeekGrid rangeStart={rangeStart} appointments={appointments} adminBlocks={adminBlocks} />}
-      {view === "day" && <DayList anchor={anchor} appointments={appointments} adminBlocks={adminBlocks} />}
+      {view === "month" && <MonthGrid anchor={anchor} today={todayWall} rangeStart={rangeStart} appointments={appointments} adminBlocks={adminBlocks} />}
+      {view === "week" && <WeekGrid today={todayWall} rangeStart={rangeStart} appointments={appointments} adminBlocks={adminBlocks} />}
+      {view === "day" && <DayList anchor={anchor} appointments={appointments} rawBlocks={rawBlocks} />}
     </div>
   );
 }
 
 function MonthGrid({
   anchor,
+  today,
   rangeStart,
   appointments,
   adminBlocks,
 }: {
   anchor: Date;
+  today: Date;
   rangeStart: Date;
   appointments: Awaited<ReturnType<typeof prisma.appointment.findMany>>;
   adminBlocks: AdminBlockRow[];
@@ -135,7 +152,7 @@ function MonthGrid({
                 !isSameMonth(day, anchor) && "bg-navy-50/50 text-navy-300"
               )}
             >
-              <span className={cn("inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold", isToday(day) && "bg-accent-500 text-white")}>
+              <span className={cn("inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-semibold", isSameDay(day, today) && "bg-accent-500 text-white")}>
                 {format(day, "d")}
               </span>
               <div className="mt-1 space-y-1">
@@ -160,10 +177,12 @@ function MonthGrid({
 }
 
 function WeekGrid({
+  today,
   rangeStart,
   appointments,
   adminBlocks,
 }: {
+  today: Date;
   rangeStart: Date;
   appointments: Awaited<ReturnType<typeof prisma.appointment.findMany>>;
   adminBlocks: AdminBlockRow[];
@@ -176,7 +195,7 @@ function WeekGrid({
         const dayBlocks = adminBlocks.filter((b) => isSameDay(b.startTime, day));
         return (
           <div key={day.toISOString()} className="rounded-2xl border border-navy-100 bg-white p-3">
-            <p className={cn("mb-2 text-sm font-bold", isToday(day) ? "text-accent-600" : "text-navy-700")}>{format(day, "EEE d")}</p>
+            <p className={cn("mb-2 text-sm font-bold", isSameDay(day, today) ? "text-accent-600" : "text-navy-700")}>{format(day, "EEE d")}</p>
             <div className="space-y-2">
               {dayAppts.length === 0 && dayBlocks.length === 0 && <p className="text-xs text-navy-300">No appointments</p>}
               {dayAppts.map((a: any) => (
@@ -201,11 +220,11 @@ function WeekGrid({
 function DayList({
   anchor,
   appointments,
-  adminBlocks,
+  rawBlocks,
 }: {
   anchor: Date;
   appointments: Awaited<ReturnType<typeof prisma.appointment.findMany>>;
-  adminBlocks: AdminBlockRow[];
+  rawBlocks: AdminBlockRow[];
 }) {
   return (
     <div className="space-y-4">
@@ -216,7 +235,7 @@ function DayList({
         </div>
         <BlockTimeButton date={format(anchor, "yyyy-MM-dd")} />
       </div>
-      <BlockedTimeList blocks={adminBlocks} />
+      <BlockedTimeList blocks={rawBlocks} />
 
       <div className="rounded-2xl border border-navy-100 bg-white">
         {appointments.length === 0 ? (
@@ -227,7 +246,7 @@ function DayList({
               <li key={a.id}>
                 <Link href={`/admin/appointments/${a.id}`} className="flex items-center justify-between gap-4 p-5 hover:bg-navy-50">
                   <div className="flex items-center gap-4">
-                    <div className="w-20 shrink-0 text-sm font-bold text-navy-900">{formatTime(a.scheduledStart)}</div>
+                    <div className="w-20 shrink-0 text-sm font-bold text-navy-900">{format(a.scheduledStart, "h:mm a")}</div>
                     <div>
                       <p className="font-semibold text-navy-900">{a.clientName}</p>
                       <p className="flex items-center gap-1.5 text-xs text-navy-400">

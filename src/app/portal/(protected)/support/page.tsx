@@ -1,107 +1,97 @@
-import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Mail, Phone, MessageSquare } from "lucide-react";
+import { ArrowRight, Clock, Mail, MessageSquareText, Phone, ShieldAlert } from "lucide-react";
 import { getBusinessSettings } from "@/lib/settings";
+import { getPortalAccount } from "@/lib/portal/account";
+import { LEGAL_DISCLAIMER, PREFERENCE_DISCLAIMER } from "@/lib/portal/constants";
+import { telHref } from "@/lib/utils";
+import { PageHeader, Panel } from "@/components/portal/ui";
 
 export const metadata = { title: "Support" };
 
+// Only describes what the portal actually supports today.
+const FAQS: { q: string; a: string }[] = [
+  {
+    q: "How do I reschedule or cancel an appointment?",
+    a: "Call or email Notar-E with your confirmation number (shown on every appointment) and we'll take care of it. Online rescheduling isn't available yet.",
+  },
+  {
+    q: "Can I request the same notary again?",
+    a: `Yes. Open a completed appointment and choose "Request again", or add the notary to your preferred list. ${PREFERENCE_DISCLAIMER}`,
+  },
+  {
+    q: "What should I bring to my appointment?",
+    a: "Valid, unexpired government-issued photo ID for every signer, and your unsigned documents. Don't sign in advance — you'll sign in front of the notary.",
+  },
+  {
+    q: "How are fees shown?",
+    a: "Michigan statutory notarial fees are always itemized separately from any other service charges such as travel or signing-agent services.",
+  },
+  {
+    q: "How do I pay an invoice?",
+    a: "Go to Invoices and choose View & pay to pay securely by card. You can also download a PDF copy of any invoice.",
+  },
+  {
+    q: "How do I update my payment method or subscription?",
+    a: "Account owners and admins can open the secure Stripe billing portal from the Billing page.",
+  },
+  {
+    q: "Can you tell me which notarial act or document I need?",
+    a: LEGAL_DISCLAIMER,
+  },
+];
+
 export default async function SupportPage() {
-  const settings = await getBusinessSettings();
+  const [settings, account] = await Promise.all([getBusinessSettings(), getPortalAccount()]);
+  const subject = encodeURIComponent(`Portal support — ${account.displayName}`);
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold text-navy-900">Help & Support</h1>
-        <p className="mt-2 text-navy-600">Get help with your account and appointments</p>
+    <div className="portal-enter space-y-6">
+      <PageHeader title="Support" description="Real people, fast answers. Here's how to reach Notar-E." />
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <a href={telHref(settings.phone)} className="portal-lift group rounded-xl border border-navy-100 bg-white p-5">
+          <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent-100 text-accent-700"><Phone className="h-5 w-5" aria-hidden /></span>
+          <p className="mt-4 text-sm font-semibold text-navy-950">Call us</p>
+          <p className="tabular mt-0.5 text-[15px] font-semibold text-accent-700">{settings.phone}</p>
+          <p className="mt-2 text-[13px] text-navy-500">Best for same-day or urgent requests.</p>
+        </a>
+        <a href={`mailto:${settings.email}?subject=${subject}`} className="portal-lift group rounded-xl border border-navy-100 bg-white p-5">
+          <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent-100 text-accent-700"><Mail className="h-5 w-5" aria-hidden /></span>
+          <p className="mt-4 text-sm font-semibold text-navy-950">Email support</p>
+          <p className="mt-0.5 truncate text-[15px] font-semibold text-accent-700">{settings.email}</p>
+          <p className="mt-2 text-[13px] text-navy-500">Include your confirmation or invoice number.</p>
+        </a>
+        <a href="/contact" className="portal-lift group rounded-xl border border-navy-100 bg-white p-5">
+          <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-accent-100 text-accent-700"><MessageSquareText className="h-5 w-5" aria-hidden /></span>
+          <p className="mt-4 text-sm font-semibold text-navy-950">Contact form</p>
+          <p className="mt-0.5 inline-flex items-center gap-1 text-[15px] font-semibold text-accent-700">
+            Send a message <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden />
+          </p>
+          <p className="mt-2 text-[13px] text-navy-500">For general questions and new services.</p>
+        </a>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Phone className="h-5 w-5 text-accent-500" />
-              Call Us
-            </CardTitle>
-          </CardHeader>
-          <CardBody>
-            <p className="text-navy-600 mb-4">Speak with our team directly</p>
-            <a href={`tel:${settings.phone}`} className="text-lg font-semibold text-accent-600 hover:text-accent-700">
-              {settings.phone}
-            </a>
-            <p className="text-xs text-navy-500 mt-2">Available during business hours</p>
-          </CardBody>
-        </Card>
+      <p className="flex items-center gap-2 text-[13px] text-navy-500">
+        <Clock className="h-4 w-4 text-navy-400" aria-hidden /> Serving {settings.serviceArea}.
+      </p>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Mail className="h-5 w-5 text-accent-500" />
-              Email Us
-            </CardTitle>
-          </CardHeader>
-          <CardBody>
-            <p className="text-navy-600 mb-4">Send us a message</p>
-            <a href={`mailto:${settings.email}`} className="text-lg font-semibold text-accent-600 hover:text-accent-700">
-              {settings.email}
-            </a>
-            <p className="text-xs text-navy-500 mt-2">We respond within 24 hours</p>
-          </CardBody>
-        </Card>
+      <Panel>
+        <h2 className="border-b border-navy-100 px-5 py-4 text-[15px] font-semibold text-navy-950">Frequently asked questions</h2>
+        <div className="divide-y divide-navy-100">
+          {FAQS.map((f) => (
+            <details key={f.q} className="group px-5 py-4 [&_summary::-webkit-details-marker]:hidden">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-sm font-semibold text-navy-900">
+                {f.q}
+                <span aria-hidden className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-navy-50 text-navy-500 transition-transform group-open:rotate-45">+</span>
+              </summary>
+              <p className="mt-2 text-sm leading-relaxed text-navy-600">{f.a}</p>
+            </details>
+          ))}
+        </div>
+      </Panel>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <MessageSquare className="h-5 w-5 text-accent-500" />
-              Contact Form
-            </CardTitle>
-          </CardHeader>
-          <CardBody>
-            <p className="text-navy-600 mb-4">Submit a support request</p>
-            <a href="/contact">
-              <Button className="w-full">Send Message</Button>
-            </a>
-          </CardBody>
-        </Card>
-      </div>
-
-      {/* FAQ */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Frequently Asked Questions</CardTitle>
-        </CardHeader>
-        <CardBody className="space-y-6">
-          <div>
-            <h3 className="font-semibold text-navy-900 mb-2">How do I reschedule an appointment?</h3>
-            <p className="text-navy-700">
-              Go to the Appointments page and click "Reschedule" on the appointment you want to change. Select a new date and time, and we'll send you confirmation.
-            </p>
-          </div>
-          <div>
-            <h3 className="font-semibold text-navy-900 mb-2">What payment methods do you accept?</h3>
-            <p className="text-navy-700">
-              We accept all major credit and debit cards through Stripe. Your payment information is secure and encrypted.
-            </p>
-          </div>
-          <div>
-            <h3 className="font-semibold text-navy-900 mb-2">Can I cancel my subscription?</h3>
-            <p className="text-navy-700">
-              Yes, you can cancel anytime from your billing page. Your subscription will remain active until the end of your current billing period.
-            </p>
-          </div>
-          <div>
-            <h3 className="font-semibold text-navy-900 mb-2">Do you offer refunds?</h3>
-            <p className="text-navy-700">
-              Refund eligibility depends on the service provided. Contact our support team to discuss your specific situation.
-            </p>
-          </div>
-          <div>
-            <h3 className="font-semibold text-navy-900 mb-2">Can I upgrade or downgrade my plan?</h3>
-            <p className="text-navy-700">
-              Yes, you can change your plan from the billing page. Changes take effect on your next billing date.
-            </p>
-          </div>
-        </CardBody>
-      </Card>
+      <p className="flex items-start gap-2 text-xs text-navy-400">
+        <ShieldAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden /> {LEGAL_DISCLAIMER}
+      </p>
     </div>
   );
 }

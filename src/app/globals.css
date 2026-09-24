@@ -297,3 +297,101 @@ body {
     transform: rotate(360deg);
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Client portal — calm, fast business-software motion.
+   Everything here is disabled under prefers-reduced-motion.
+   --------------------------------------------------------------------------- */
+@keyframes portal-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes portal-meter {
+  from {
+    transform: scaleX(0);
+  }
+}
+@keyframes portal-drawer-in {
+  from {
+    transform: translateX(-100%);
+  }
+}
+@keyframes portal-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes portal-shimmer {
+  0% {
+    background-position: -400px 0;
+  }
+  100% {
+    background-position: 400px 0;
+  }
+}
+
+.portal-enter {
+  animation: portal-enter 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.portal-meter-fill {
+  transform-origin: left center;
+  animation: portal-meter 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.portal-drawer {
+  animation: portal-drawer-in 0.22s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.portal-scrim {
+  animation: portal-fade 0.2s ease both;
+}
+.portal-skeleton {
+  background: linear-gradient(90deg, var(--color-navy-50) 0%, var(--color-navy-100) 50%, var(--color-navy-50) 100%);
+  background-size: 800px 100%;
+  animation: portal-shimmer 1.4s linear infinite;
+}
+.portal-lift {
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
+}
+.portal-lift:hover {
+  border-color: var(--color-navy-200);
+  box-shadow: 0 1px 2px rgba(10, 17, 40, 0.04), 0 6px 16px -8px rgba(10, 17, 40, 0.12);
+}
+.portal-press:active {
+  transform: scale(0.98);
+}
+
+/* Visible, on-brand keyboard focus throughout the portal */
+.portal-root :focus-visible {
+  outline: 2px solid var(--color-accent-500);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .portal-enter,
+  .portal-meter-fill,
+  .portal-drawer,
+  .portal-scrim,
+  .portal-skeleton {
+    animation: none !important;
+  }
+  .portal-lift,
+  .portal-press {
+    transition: none !important;
+  }
+  .portal-press:active {
+    transform: none;
+  }
+}

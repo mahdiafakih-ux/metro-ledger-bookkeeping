@@ -1,28 +1,30 @@
-import { redirect } from "next/navigation";
-import { getClientSession } from "@/lib/client-auth";
-import { PortalNav } from "@/components/portal/nav";
+import { PortalShell } from "@/components/portal/shell";
+import { getPortalAccount } from "@/lib/portal/account";
+import { initials } from "@/lib/portal/present";
 
 export const metadata = {
-  title: "Client Portal",
+  title: { default: "Client Portal", template: "%s · Notar-E Portal" },
+  robots: { index: false, follow: false },
 };
 
-export default async function PortalLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const session = await getClientSession();
-
-  if (!session) {
-    redirect("/portal/login");
-  }
+export default async function PortalLayout({ children }: { children: React.ReactNode }) {
+  // Redirects to /portal/login when there is no valid *client* session.
+  const account = await getPortalAccount();
+  const status = account.plan.status;
 
   return (
-    <div className="min-h-screen bg-navy-50">
-      <PortalNav session={session} />
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        {children}
-      </div>
-    </div>
+    <PortalShell
+      account={{
+        displayName: account.displayName,
+        personName: account.client.name,
+        email: account.client.email,
+        initials: initials(account.business?.companyName || account.client.name),
+        planName: account.plan.name,
+        planActive: account.plan.kind === "payg" || status === "" || status === "active" || status === "trialing",
+        canRequest: account.canRequest,
+      }}
+    >
+      {children}
+    </PortalShell>
   );
 }

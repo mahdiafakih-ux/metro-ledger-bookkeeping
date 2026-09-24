@@ -15,6 +15,7 @@ import {
   BarChart3,
   FileText,
   Settings,
+  BadgeCheck,
   type LucideIcon,
 } from "lucide-react";
 
@@ -32,6 +33,7 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/admin/appointments", label: "Appointments", icon: ClipboardList },
   { href: "/admin/clients", label: "Clients", icon: Users },
   { href: "/admin/businesses", label: "Businesses", icon: Building2 },
+  { href: "/admin/notaries", label: "Notaries", icon: BadgeCheck },
   { href: "/admin/pipeline", label: "Sales Pipeline", icon: Kanban },
   { href: "/admin/outreach", label: "Outreach", icon: PhoneCall },
   { href: "/admin/scorecard", label: "Daily Scorecard", icon: CheckSquare },

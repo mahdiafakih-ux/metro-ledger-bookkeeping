@@ -1,3 +1,5 @@
+import { useId } from "react";
+
 // Original Notar-E Services mark: an "N" monogram on a rounded badge with a
 // verification checkmark accent — evokes signature, security, and digital
 // verification without relying on any external assets or fonts-as-logo.
@@ -7,6 +9,9 @@ type IconProps = {
 };
 
 export function NotareIcon({ size = 40, className }: IconProps) {
+  // Unique per instance: a shared gradient id breaks the badge wherever the
+  // first instance on the page is inside a display:none container.
+  const gradientId = `notare-badge-${useId().replace(/:/g, "")}`;
   return (
     <svg
       width={size}
@@ -18,7 +23,7 @@ export function NotareIcon({ size = 40, className }: IconProps) {
       role="img"
       aria-label="Notar-E Services icon"
     >
-      <rect width="64" height="64" rx="16" fill="url(#notare-badge-gradient)" />
+      <rect width="64" height="64" rx="16" fill={`url(#${gradientId})`} />
       <path
         d="M20 46V18h6.2L38 38.2V18h6v28h-6.2L26 27.6V46h-6Z"
         fill="white"
@@ -33,7 +38,7 @@ export function NotareIcon({ size = 40, className }: IconProps) {
         fill="none"
       />
       <defs>
-        <linearGradient id="notare-badge-gradient" x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+        <linearGradient id={gradientId} x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
           <stop offset="0" stopColor="#131F3D" />
           <stop offset="1" stopColor="#050914" />
         </linearGradient>

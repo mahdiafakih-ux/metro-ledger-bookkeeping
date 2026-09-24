@@ -1,17 +1,9 @@
-import { SignJWT, jwtVerify } from "jose";
+import { signSessionToken, verifySessionTokenOfType } from "./session-tokens";
 import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
 
 const COOKIE_NAME = "notare_admin_session";
 const SESSION_DURATION_SECONDS = 60 * 60 * 24 * 14; // 14 days
-
-function getSecretKey() {
-  const secret = process.env.AUTH_SECRET;
-  if (!secret) {
-    throw new Error("AUTH_SECRET environment variable is not set");
-  }
-  return new TextEncoder().encode(secret);
-}
 
 export async function hashPassword(password: string) {
   return bcrypt.hash(password, 12);
@@ -28,20 +20,24 @@ export type SessionPayload = {
 };
 
 export async function createSessionToken(payload: SessionPayload) {
-  return new SignJWT({ ...payload })
-    .setProtectedHeader({ alg: "HS256" })
-    .setIssuedAt()
-    .setExpirationTime(`${SESSION_DURATION_SECONDS}s`)
-    .sign(getSecretKey());
+  return signSessionToken(
+    "admin",
+    payload.userId,
+    { userId: payload.userId, email: payload.email, name: payload.name },
+    SESSION_DURATION_SECONDS
+  );
 }
 
+// Only accepts tokens minted for the ADMIN audience with typ "admin".
+// A client-portal token (same secret, different audience/type) is rejected.
 export async function verifySessionToken(token: string): Promise<SessionPayload | null> {
-  try {
-    const { payload } = await jwtVerify(token, getSecretKey());
-    return payload as unknown as SessionPayload;
-  } catch {
-    return null;
-  }
+  const payload = await verifySessionTokenOfType("admin", token);
+  if (!payload) return null;
+  return {
+    userId: String(payload.sub),
+    email: String(payload.email ?? ""),
+    name: String(payload.name ?? ""),
+  };
 }
 
 export async function setSessionCookie(payload: SessionPayload) {

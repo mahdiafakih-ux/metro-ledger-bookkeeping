@@ -1,16 +1,8 @@
-import { SignJWT, jwtVerify } from "jose";
+import { signSessionToken, verifySessionTokenOfType } from "./session-tokens";
 import { cookies } from "next/headers";
 
 const PORTAL_COOKIE_NAME = "notare_client_portal";
 const SESSION_DURATION_SECONDS = 60 * 60 * 24 * 30; // 30 days
-
-function getSecretKey() {
-  const secret = process.env.AUTH_SECRET;
-  if (!secret) {
-    throw new Error("AUTH_SECRET environment variable is not set");
-  }
-  return new TextEncoder().encode(secret);
-}
 
 export type ClientSessionPayload = {
   clientId: string;
@@ -22,23 +14,27 @@ export type ClientSessionPayload = {
  * Create a JWT token for client portal access
  */
 export async function createClientSessionToken(payload: ClientSessionPayload) {
-  return new SignJWT({ ...payload })
-    .setProtectedHeader({ alg: "HS256" })
-    .setIssuedAt()
-    .setExpirationTime(`${SESSION_DURATION_SECONDS}s`)
-    .sign(getSecretKey());
+  return signSessionToken(
+    "client",
+    payload.clientId,
+    { clientId: payload.clientId, email: payload.email, name: payload.name },
+    SESSION_DURATION_SECONDS
+  );
 }
 
 /**
  * Verify client portal JWT token
  */
+// Only accepts tokens minted for the CLIENT audience with typ "client".
+// An admin token is never accepted as a client-portal session.
 export async function verifyClientSessionToken(token: string): Promise<ClientSessionPayload | null> {
-  try {
-    const { payload } = await jwtVerify(token, getSecretKey());
-    return payload as unknown as ClientSessionPayload;
-  } catch {
-    return null;
-  }
+  const payload = await verifySessionTokenOfType("client", token);
+  if (!payload) return null;
+  return {
+    clientId: String(payload.sub),
+    email: String(payload.email ?? ""),
+    name: String(payload.name ?? ""),
+  };
 }
 
 /**
@@ -82,11 +78,25 @@ export async function requireClientSession(): Promise<ClientSessionPayload | nul
 }
 
 /**
- * Helper to generate a temporary access code (6 digits)
+ * Generate a 6-digit one-time access code using a CSPRNG.
  */
 export function generateAccessCode(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  // crypto.getRandomValues is available in Node 20+ and the Edge runtime.
+  const buf = new Uint32Array(1);
+  let n: number;
+  // Rejection sampling keeps the distribution uniform over 000000–999999.
+  do {
+    crypto.getRandomValues(buf);
+    n = buf[0];
+  } while (n >= 4_294_000_000);
+  return String(n % 1_000_000).padStart(6, "0");
 }
+
+// One-time login code policy. Enforced server-side and persisted in the
+// database (ClientAccessSession.failedAttempts) so it holds across
+// serverless instances, unlike the in-memory limiter.
+export const ACCESS_CODE_TTL_MINUTES = 10;
+export const ACCESS_CODE_MAX_ATTEMPTS = 5;
 
 /**
  * Hash an access code with bcryptjs for storage

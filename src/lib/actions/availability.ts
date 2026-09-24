@@ -2,6 +2,8 @@
 
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { requireAdminSession } from "@/lib/auth";
+import { dateOnlyToUtc } from "@/lib/tz";
 
 export interface AvailabilityInput {
   activeDays: number[];
@@ -16,6 +18,10 @@ export interface AvailabilityInput {
 }
 
 export async function saveAvailability(input: AvailabilityInput) {
+  // SECURITY: Server Actions are publicly invocable — admin only.
+  const session = await requireAdminSession();
+  if (!session) return { success: false, error: "Unauthorized" };
+
   await prisma.businessSettings.update({
     where: { id: "default" },
     data: {
@@ -30,7 +36,7 @@ export async function saveAvailability(input: AvailabilityInput) {
 
   await prisma.availabilityRule.deleteMany({});
   await prisma.availabilityRule.createMany({
-    data: input.activeDays.map((day: any) => ({
+    data: input.activeDays.map((day) => ({
       dayOfWeek: day,
       startTime: input.startTime,
       endTime: input.endTime,
@@ -44,12 +50,21 @@ export async function saveAvailability(input: AvailabilityInput) {
 }
 
 export async function addBlackoutDate(date: string, reason: string) {
-  await prisma.blackoutDate.create({ data: { date: new Date(`${date}T00:00:00`), reason } });
+  const session = await requireAdminSession();
+  if (!session) return { success: false, error: "Unauthorized" };
+
+  // Calendar day stored as UTC midnight (see src/lib/tz.ts).
+  const day = dateOnlyToUtc(date);
+  if (!day) return { success: false, error: "Invalid date" };
+  await prisma.blackoutDate.create({ data: { date: day, reason } });
   revalidatePath("/admin/settings");
   return { success: true };
 }
 
 export async function removeBlackoutDate(id: string) {
+  const session = await requireAdminSession();
+  if (!session) return { success: false, error: "Unauthorized" };
+
   await prisma.blackoutDate.delete({ where: { id } });
   revalidatePath("/admin/settings");
   return { success: true };

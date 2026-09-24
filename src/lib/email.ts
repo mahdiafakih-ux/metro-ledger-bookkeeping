@@ -1,3 +1,4 @@
+import { BUSINESS_TIME_ZONE, detroitZoneAbbrev } from "./tz";
 import { Resend } from "resend";
 
 let client: Resend | null = null;
@@ -142,8 +143,12 @@ export async function sendBookingConfirmationEmail(input: {
   type: string;
   scheduledStart: Date;
   totalCents: number;
+  /** When set (e.g. subscription requests), shown instead of "Total Due" and the pay button is omitted. */
+  billingNote?: string;
+  /** Optional extra paragraph (e.g. preferred-notary disclaimer). */
+  extraNote?: string;
 }) {
-  const dateStr = input.scheduledStart.toLocaleString("en-US", { weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" });
+  const dateStr = `${input.scheduledStart.toLocaleString("en-US", { timeZone: BUSINESS_TIME_ZONE, weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" })} ${detroitZoneAbbrev(input.scheduledStart)}`;
   const html = emailLayout(
     `Your appointment is confirmed for ${dateStr}`,
     `${heading("You're booked!")}
@@ -153,9 +158,12 @@ export async function sendBookingConfirmationEmail(input: {
        ["Service", input.serviceType],
        ["Type", input.type === "remote" ? "Remote / Online" : "In-Person"],
        ["Date & Time", dateStr],
-       ["Total Due", `$${(input.totalCents / 100).toFixed(2)}`],
+       input.billingNote ? ["Billing", input.billingNote] : ["Total Due", `$${(input.totalCents / 100).toFixed(2)}`],
      ])}
-     ${button(`${siteUrl()}/book/confirmation/${input.appointmentId}`, "View & Pay Online")}
+     ${input.extraNote ? paragraph(input.extraNote) : ""}
+     ${input.billingNote || input.totalCents <= 0
+       ? button(`${siteUrl()}/portal/appointments/${input.appointmentId}`, "View in Client Portal")
+       : button(`${siteUrl()}/book/confirmation/${input.appointmentId}`, "View & Pay Online")}
      ${paragraph("Availability was not guaranteed until this confirmation was sent — you're all set now. Reply to this email if you need to make any changes.")}`
   );
   return send(input.to, `Appointment Confirmed — ${input.confirmationNumber}`, html);
@@ -169,7 +177,7 @@ export async function sendAppointmentReminderEmail(input: {
   serviceType: string;
   scheduledStart: Date;
 }) {
-  const dateStr = input.scheduledStart.toLocaleString("en-US", { weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" });
+  const dateStr = `${input.scheduledStart.toLocaleString("en-US", { timeZone: BUSINESS_TIME_ZONE, weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" })} ${detroitZoneAbbrev(input.scheduledStart)}`;
   const html = emailLayout(
     `Reminder: your appointment is coming up`,
     `${heading("Appointment Reminder")}
@@ -193,7 +201,7 @@ export async function sendAppointmentChangedEmail(input: {
   serviceType: string;
   scheduledStart: Date;
 }) {
-  const dateStr = input.scheduledStart.toLocaleString("en-US", { weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" });
+  const dateStr = `${input.scheduledStart.toLocaleString("en-US", { timeZone: BUSINESS_TIME_ZONE, weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" })} ${detroitZoneAbbrev(input.scheduledStart)}`;
   const html = emailLayout(
     `Your appointment details have changed`,
     `${heading("Appointment Updated")}
@@ -215,7 +223,7 @@ export async function sendAppointmentCancelledEmail(input: {
   serviceType: string;
   scheduledStart: Date;
 }) {
-  const dateStr = input.scheduledStart.toLocaleString("en-US", { weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" });
+  const dateStr = `${input.scheduledStart.toLocaleString("en-US", { timeZone: BUSINESS_TIME_ZONE, weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" })} ${detroitZoneAbbrev(input.scheduledStart)}`;
   const html = emailLayout(
     `Your appointment has been cancelled`,
     `${heading("Appointment Cancelled")}
@@ -297,8 +305,8 @@ export async function sendBookingNotificationEmail(input: {
   const ownerEmail = process.env.BOOKING_NOTIFICATION_EMAIL;
   if (!ownerEmail) return { success: true, skipped: true } as const;
 
-  const dateStr = input.scheduledStart.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" });
-  const timeStr = input.scheduledStart.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  const dateStr = input.scheduledStart.toLocaleDateString("en-US", { timeZone: BUSINESS_TIME_ZONE, weekday: "long", month: "long", day: "numeric", year: "numeric" });
+  const timeStr = `${input.scheduledStart.toLocaleTimeString("en-US", { timeZone: BUSINESS_TIME_ZONE, hour: "numeric", minute: "2-digit" })} ${detroitZoneAbbrev(input.scheduledStart)}`;
   const locationStr = input.type === "remote" ? "Remote / Online" : escapeHtml(input.address || "In-person (no address provided)");
 
   const rows: Array<[string, string]> = [

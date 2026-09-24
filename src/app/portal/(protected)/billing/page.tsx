@@ -1,198 +1,209 @@
+import Link from "next/link";
+import { ArrowRight, Building2, FileText, Lock, ShieldCheck } from "lucide-react";
 import { prisma } from "@/lib/db";
-import { requireClientSession } from "@/lib/client-auth";
+import { getPortalAccount, invoiceScope } from "@/lib/portal/account";
+import { getOutstanding } from "@/lib/portal/queries";
+import { invoiceStatus, invoiceTotals, subscriptionStatus } from "@/lib/portal/present";
+import { isStripeConfigured } from "@/lib/stripe";
 import { getBusinessSettings } from "@/lib/settings";
 import { formatCents } from "@/lib/money";
-import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
-import { BillingClient } from "@/components/portal/billing-client";
+import { formatDateOnly, formatDetroitDate } from "@/lib/tz";
+import { PlanCard } from "@/components/portal/plan-card";
+import { BillingPortalButton } from "@/components/portal/billing-client";
+import { EmptyState, KeyValue, PageHeader, Panel, PanelHeader, PortalLink, StatusPill } from "@/components/portal/ui";
 
 export const metadata = { title: "Billing" };
 
-export default async function BillingPage() {
-  const session = await requireClientSession();
-  if (!session) return null;
+export default async function BillingPage({ searchParams }: { searchParams: Promise<{ cancelled?: string }> }) {
+  const sp = await searchParams;
+  const account = await getPortalAccount();
+  const { plan, usage } = account;
+  const [outstanding, recent, settings] = await Promise.all([
+    getOutstanding(account),
+    prisma.invoice.findMany({
+      where: invoiceScope(account),
+      orderBy: { issueDate: "desc" },
+      take: 5,
+      include: { items: { select: { amountCents: true } } },
+    }),
+    getBusinessSettings(),
+  ]);
 
-  const client = await prisma.client.findUnique({
-    where: { id: session.clientId },
-    include: {
-      invoices: {
-        orderBy: { issueDate: "desc" },
-        include: { items: true },
-      },
-    },
-  });
-
-  if (!client) return null;
-
-  const settings = await getBusinessSettings();
-
-  // Get current plan details
-  let planInfo = {
-    name: "Individual Service",
-    price: "$125",
-    period: "per appointment",
-    status: "active" as const,
-    nextBillingDate: null as Date | null,
-    usage: null as { current: number; limit: number } | null,
-  };
-
-  if (client.currentPlanKey === "business30") {
-    planInfo = {
-      name: "Business 30",
-      price: "$2,500",
-      period: "per month",
-      status: (client.subscriptionStatus as any) || "active",
-      nextBillingDate: client.nextBillingDate,
-      usage: {
-        current: client.monthlyUsageCount,
-        limit: settings.business30IncludedAppointments,
-      },
-    };
-  } else if (client.currentPlanKey === "unlimited") {
-    planInfo = {
-      name: "Business Unlimited",
-      price: "$4,000",
-      period: "per month",
-      status: (client.subscriptionStatus as any) || "active",
-      nextBillingDate: client.nextBillingDate,
-      usage: null,
-    };
-  }
-
-  // Calculate totals
-  const unpaidInvoices = client.invoices.filter((i: any) => i.status !== "paid");
-  const totalOutstanding = unpaidInvoices.reduce((sum: number, inv: any) => {
-    const total = inv.items.reduce((s: number, item: any) => s + item.amountCents, 0) + inv.taxCents;
-    return sum + (total - inv.amountPaidCents);
-  }, 0);
+  const isSubscription = plan.kind === "business30" || plan.kind === "unlimited";
+  const canOpenStripe = isStripeConfigured() && plan.hasStripeCustomer && account.canManageBilling;
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold text-navy-900">Billing & Subscriptions</h1>
-        <p className="mt-2 text-navy-600">Manage your payment methods and subscription</p>
-      </div>
+    <div className="portal-enter space-y-6">
+      <PageHeader
+        title="Billing"
+        description={account.plan.owner === "business" ? `Plan and billing for ${account.business?.companyName}.` : "Your plan, balance and billing settings."}
+      />
 
-      {/* Current Plan */}
-      <Card className="border-2 border-accent-400 bg-accent-50">
-        <CardHeader>
-          <CardTitle>Current Plan</CardTitle>
-        </CardHeader>
-        <CardBody>
-          <div className="grid gap-6 sm:grid-cols-3">
-            <div>
-              <p className="text-sm text-navy-600">Plan</p>
-              <p className="text-xl font-bold text-navy-900">{planInfo.name}</p>
-            </div>
-            <div>
-              <p className="text-sm text-navy-600">Price</p>
-              <p className="text-xl font-bold text-navy-900">
-                {planInfo.price}
-                <span className="text-sm font-normal text-navy-600 ml-1">
-                  {planInfo.period}
-                </span>
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-navy-600">Status</p>
-              <p className="text-xl font-bold text-success-600 capitalize">
-                {planInfo.status}
-              </p>
-            </div>
-            {planInfo.nextBillingDate && (
-              <div className="sm:col-span-3">
-                <p className="text-sm text-navy-600">Next Billing Date</p>
-                <p className="text-lg font-semibold text-navy-900">
-                  {planInfo.nextBillingDate.toLocaleDateString()}
-                </p>
-              </div>
-            )}
-            {planInfo.usage && (
-              <div className="sm:col-span-3">
-                <p className="text-sm text-navy-600 mb-2">Monthly Usage</p>
-                <div className="flex items-center gap-4">
-                  <div className="flex-1">
-                    <div className="h-2 bg-navy-200 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-accent-500"
-                        style={{
-                          width: `${Math.min(100, (planInfo.usage.current / planInfo.usage.limit) * 100)}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                  <span className="text-sm font-semibold text-navy-900 whitespace-nowrap">
-                    {planInfo.usage.current} / {planInfo.usage.limit}
+      {sp.cancelled === "true" && (
+        <p className="rounded-lg border border-navy-100 bg-white px-4 py-3 text-sm text-navy-600">Checkout was cancelled — nothing was charged.</p>
+      )}
+
+      <div className="grid gap-6 lg:grid-cols-5">
+        <div className="space-y-6 lg:col-span-3">
+          <PlanCard account={account} showActions={false} />
+
+          {isSubscription && (
+            <Panel>
+              <PanelHeader title="Subscription details" />
+              <dl className="grid grid-cols-1 gap-5 p-5 sm:grid-cols-2">
+                <KeyValue label="Plan">{plan.name}</KeyValue>
+                <KeyValue label="Status">
+                  <StatusPill status={subscriptionStatus(plan.status)} />
+                </KeyValue>
+                <KeyValue label="Monthly price">
+                  {plan.priceCents != null ? <span className="tabular">{formatCents(plan.priceCents)}</span> : "—"}
+                </KeyValue>
+                <KeyValue label="Next billing date">{plan.nextBillingDate ? formatDetroitDate(plan.nextBillingDate) : "—"}</KeyValue>
+                <KeyValue label="Usage this period">
+                  <span className="tabular">
+                    {usage ? (usage.included != null ? `${usage.used} of ${usage.included}` : `${usage.used} · unlimited`) : "—"}
                   </span>
+                </KeyValue>
+                <KeyValue label="Additional appointments">
+                  {plan.kind === "business30" && usage ? (
+                    usage.overage > 0 ? (
+                      <span className="tabular text-warning-600">
+                        {usage.overage}
+                        {usage.estimatedOverageCents != null && ` · est. ${formatCents(usage.estimatedOverageCents)}`}
+                      </span>
+                    ) : (
+                      "None"
+                    )
+                  ) : (
+                    "Not applicable"
+                  )}
+                </KeyValue>
+              </dl>
+              {plan.kind === "business30" && plan.overageFeeCents != null && (
+                <p className="border-t border-navy-100 px-5 py-3 text-[13px] text-navy-500">
+                  Appointments beyond the {plan.included} included each month are {formatCents(plan.overageFeeCents)} each.
+                  Additional-appointment charges are reviewed and invoiced separately — they are never charged automatically.
+                </p>
+              )}
+            </Panel>
+          )}
+
+          <Panel>
+            <PanelHeader
+              title="Recent invoices"
+              action={
+                <Link href="/portal/invoices" className="text-[13px] font-semibold text-accent-700 hover:text-accent-600">
+                  View all
+                </Link>
+              }
+            />
+            {recent.length ? (
+              <ul className="divide-y divide-navy-100">
+                {recent.map((inv) => {
+                  const { total, balance } = invoiceTotals(inv);
+                  return (
+                    <li key={inv.id}>
+                      <Link href={`/invoice/${inv.id}`} className="flex items-center gap-4 px-5 py-3.5 hover:bg-navy-50/60">
+                        <FileText className="h-4 w-4 shrink-0 text-navy-400" aria-hidden />
+                        <span className="min-w-0 flex-1">
+                          <span className="tabular block text-sm font-semibold text-navy-900">{inv.invoiceNumber}</span>
+                          <span className="block text-xs text-navy-500">Issued {formatDateOnly(inv.issueDate)}</span>
+                        </span>
+                        <span className="text-right">
+                          <span className="tabular block text-sm font-semibold text-navy-950">{formatCents(total)}</span>
+                          {balance > 0 && inv.status !== "cancelled" && (
+                            <span className="tabular block text-xs text-navy-500">{formatCents(balance)} due</span>
+                          )}
+                        </span>
+                        <StatusPill status={invoiceStatus(inv)} className="hidden sm:inline-flex" />
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : (
+              <EmptyState compact icon={FileText} title="You're all caught up." description="Invoices will appear here once they're generated." />
+            )}
+          </Panel>
+        </div>
+
+        <div className="space-y-6 lg:col-span-2">
+          <Panel>
+            <div className="p-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.08em] text-navy-400">Outstanding balance</p>
+              <p className={`tabular mt-2 text-[32px] font-semibold leading-none tracking-[-0.03em] ${outstanding.balanceCents > 0 ? "text-navy-950" : "text-navy-400"}`}>
+                {formatCents(outstanding.balanceCents)}
+              </p>
+              <p className="mt-2 text-[13px] text-navy-500">
+                {outstanding.count > 0
+                  ? `${outstanding.count} unpaid invoice${outstanding.count === 1 ? "" : "s"}`
+                  : "Nothing due right now."}
+              </p>
+              {outstanding.count > 0 && (
+                <PortalLink href="/portal/invoices" className="mt-4 w-full">
+                  Review & pay <ArrowRight className="h-4 w-4" aria-hidden />
+                </PortalLink>
+              )}
+            </div>
+          </Panel>
+
+          <Panel>
+            <PanelHeader title="Payment method & subscription" />
+            <div className="space-y-4 p-5">
+              {canOpenStripe ? (
+                <>
+                  <p className="text-sm text-navy-600">
+                    Update your card, download receipts{isSubscription ? ", and manage or cancel your subscription" : ""} in our secure
+                    Stripe billing portal.
+                  </p>
+                  <BillingPortalButton label="Manage billing" variant="dark" className="w-full" />
+                  <p className="flex items-start gap-2 text-xs text-navy-400">
+                    <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+                    Card details are stored by Stripe and never touch Notar-E&apos;s servers.
+                  </p>
+                </>
+              ) : account.plan.owner === "business" && !account.canManageBilling ? (
+                <p className="text-sm text-navy-600">
+                  Billing for {account.business?.companyName} is managed by your account owner or admin.
+                </p>
+              ) : (
+                <p className="text-sm text-navy-600">
+                  No saved payment method yet. You can pay each invoice or appointment securely online by card. Need to set up
+                  billing? Contact us at{" "}
+                  <a href={`mailto:${settings.email}`} className="font-semibold text-accent-700">
+                    {settings.email}
+                  </a>
+                  .
+                </p>
+              )}
+            </div>
+          </Panel>
+
+          {!isSubscription && (
+            <Panel className="p-5">
+              <div className="flex gap-3">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-navy-900 text-white">
+                  <Building2 className="h-4 w-4" aria-hidden />
+                </span>
+                <div>
+                  <p className="text-sm font-semibold text-navy-950">Need notaries every month?</p>
+                  <p className="mt-1 text-[13px] text-navy-500">
+                    Business plans include priority scheduling, centralized monthly invoicing and a shared preferred-notary team.
+                  </p>
+                  <Link href="/business-solutions" className="mt-3 inline-flex items-center gap-1 text-[13px] font-semibold text-accent-700 hover:text-accent-600">
+                    Explore business plans <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+                  </Link>
                 </div>
               </div>
-            )}
-          </div>
-        </CardBody>
-      </Card>
-
-      {/* Stripe Portal Button */}
-      {client.stripeCustomerId && (
-        <BillingClient client={client} />
-      )}
-
-      {/* Outstanding Balance */}
-      {totalOutstanding > 0 && (
-        <Card className="border-warning-200 bg-warning-50">
-          <CardHeader>
-            <CardTitle className="text-warning-900">Outstanding Balance</CardTitle>
-          </CardHeader>
-          <CardBody>
-            <p className="text-2xl font-bold text-warning-700">
-              {formatCents(totalOutstanding)}
-            </p>
-            <p className="mt-2 text-sm text-warning-600">
-              {unpaidInvoices.length} invoice{unpaidInvoices.length !== 1 ? "s" : ""} awaiting payment
-            </p>
-          </CardBody>
-        </Card>
-      )}
-
-      {/* Recent Invoices */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Invoices</CardTitle>
-        </CardHeader>
-        <CardBody>
-          {client.invoices.length > 0 ? (
-            <div className="space-y-2 max-h-[400px] overflow-y-auto">
-              {client.invoices.slice(0, 5).map((inv: any) => {
-                const total = inv.items.reduce((sum: number, i: any) => sum + i.amountCents, 0) + inv.taxCents;
-                const outstanding = total - inv.amountPaidCents;
-                return (
-                  <div
-                    key={inv.id}
-                    className="flex items-center justify-between rounded-lg border border-navy-100 p-3"
-                  >
-                    <div>
-                      <p className="font-medium text-navy-900">{inv.invoiceNumber}</p>
-                      <p className="text-xs text-navy-600">
-                        {new Date(inv.issueDate).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-semibold text-navy-900">{formatCents(total)}</p>
-                      {outstanding > 0 ? (
-                        <p className="text-xs font-medium text-danger-600">
-                          {formatCents(outstanding)} due
-                        </p>
-                      ) : (
-                        <p className="text-xs font-medium text-success-600">Paid</p>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <p className="text-center text-navy-600 py-8">No invoices yet</p>
+            </Panel>
           )}
-        </CardBody>
-      </Card>
+
+          <p className="flex items-start gap-2 px-1 text-xs text-navy-400">
+            <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+            Michigan statutory notarial fees are always itemized separately from any other service charges.
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

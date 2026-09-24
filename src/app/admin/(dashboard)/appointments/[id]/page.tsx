@@ -1,3 +1,4 @@
+import { utcToDatetimeLocal } from "@/lib/tz";
 import { notFound } from "next/navigation";
 import { Phone, Mail } from "lucide-react";
 import { prisma } from "@/lib/db";
@@ -5,22 +6,30 @@ import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge, STATUS_TONES } from "@/components/ui/badge";
 import { AppointmentActions } from "@/components/admin/appointment-actions";
 import { AppointmentForm } from "@/components/admin/appointment-form";
+import { NotaryAssign } from "@/components/admin/notary-assign";
 import { titleCase, telHref } from "@/lib/utils";
 
-function toDatetimeLocal(d: Date) {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
+// Detroit wall time for the datetime-local input (server TZ-independent).
+const toDatetimeLocal = utcToDatetimeLocal;
 
 export default async function AppointmentDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const appointment = await prisma.appointment.findUnique({ where: { id } });
+  const appointment = await prisma.appointment.findUnique({
+    where: { id },
+    include: { preferredNotary: { select: { displayName: true } } },
+  });
   if (!appointment) notFound();
 
-  const [clients, businesses] = await Promise.all([
+  const [clients, businesses, notaries] = await Promise.all([
     prisma.client.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true, company: true, email: true, phone: true } }),
     prisma.business.findMany({ orderBy: { companyName: "asc" }, select: { id: true, companyName: true, contactName: true, email: true, phone: true } }),
+    prisma.notary.findMany({ orderBy: { displayName: "asc" }, select: { id: true, displayName: true, isActive: true } }),
   ]);
+  const PREFERENCE_LABELS: Record<string, string> = {
+    first_available: "First available",
+    preferred: "Preferred notary",
+    no_preference: "No preference",
+  };
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -67,6 +76,26 @@ export default async function AppointmentDetailPage({ params }: { params: Promis
             paymentStatus={appointment.paymentStatus}
             balanceDueCents={appointment.totalAmountCents - appointment.amountPaidCents}
           />
+        </CardBody>
+      </Card>
+
+      <Card>
+        <CardHeader><CardTitle>Notary</CardTitle></CardHeader>
+        <CardBody className="space-y-3">
+          {appointment.notaryPreference && (
+            <p className="text-sm text-navy-600">
+              Client preference: <strong>{PREFERENCE_LABELS[appointment.notaryPreference] ?? appointment.notaryPreference}</strong>
+              {appointment.preferredNotary && <> — requested <strong>{appointment.preferredNotary.displayName}</strong></>}
+            </p>
+          )}
+          {notaries.length === 0 ? (
+            <p className="text-sm text-navy-400">
+              No notaries set up yet. <a href="/admin/notaries" className="font-semibold text-accent-600">Add notaries</a> to assign one.
+            </p>
+          ) : (
+            <NotaryAssign appointmentId={appointment.id} current={appointment.assignedNotaryId} notaries={notaries} />
+          )}
+          <p className="text-xs text-navy-400">Clients see the assigned notary&apos;s display name in their portal.</p>
         </CardBody>
       </Card>
 

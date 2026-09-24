@@ -7,6 +7,7 @@ import { generateConfirmationNumber } from "@/lib/utils";
 import { getOpenSlotsForDate } from "@/lib/availability";
 import { createNotification } from "@/lib/actions/notifications";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { detroitDateTimeToUtc, formatDetroitDateTime } from "@/lib/tz";
 
 export async function getAvailableSlotsAction(dateISO: string) {
   return getOpenSlotsForDate(dateISO);
@@ -38,9 +39,9 @@ export async function submitBooking(input: BookingInput): Promise<BookingResult>
   const serviceFeeCents = individualPlan?.serviceFeeCents ?? 11500;
   const totalCents = statutoryFeeCents + serviceFeeCents;
 
-  const [hh, mm] = data.time.split(":").map(Number);
-  const start = new Date(`${data.date}T00:00:00`);
-  start.setHours(hh, mm, 0, 0);
+  // The customer picked a Detroit wall-clock date/time.
+  const start = detroitDateTimeToUtc(data.date, data.time);
+  if (!start) return { success: false, error: "Please choose a valid date and time." };
   const settings = await prisma.businessSettings.findUnique({ where: { id: "default" } });
   const duration = settings?.appointmentDurationMinutes ?? 20;
   const end = new Date(start.getTime() + duration * 60000);
@@ -145,7 +146,7 @@ export async function submitBooking(input: BookingInput): Promise<BookingResult>
   await createNotification({
     type: "new_booking",
     title: "New appointment booked online",
-    body: `${data.name} booked ${data.serviceType} for ${start.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`,
+    body: `${data.name} booked ${data.serviceType} for ${formatDetroitDateTime(start, { year: undefined })}`,
     link: `/admin/appointments/${appointmentId}`,
   });
 

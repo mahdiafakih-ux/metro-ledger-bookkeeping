@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { addDaysISO, detroitTodayISO } from "@/lib/tz";
 import { useRouter } from "next/navigation";
 import {
   MapPin,
@@ -66,11 +67,9 @@ export function BookingWizard({
   const [notes, setNotes] = useState("");
   const [agreed, setAgreed] = useState(false);
 
-  const todayISO = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const todayISO = useMemo(() => detroitTodayISO(), []);
   const maxDateISO = useMemo(() => {
-    const d = new Date();
-    d.setDate(d.getDate() + maxAdvanceDays);
-    return d.toISOString().slice(0, 10);
+    return addDaysISO(detroitTodayISO(), maxAdvanceDays);
   }, [maxAdvanceDays]);
 
   /* eslint-disable react-hooks/set-state-in-effect -- resetting selection + fetching slots when the chosen date changes */

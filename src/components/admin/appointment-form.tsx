@@ -111,7 +111,7 @@ export function AppointmentForm({
     const res = appointmentId ? await updateAppointment(appointmentId, input) : await createAppointment(input);
     setSaving(false);
     if (!res.success) {
-      toast.error("Could not save appointment");
+      toast.error(("error" in res && res.error) || "Could not save appointment");
       return;
     }
     toast.success(appointmentId ? "Appointment updated" : "Appointment created");

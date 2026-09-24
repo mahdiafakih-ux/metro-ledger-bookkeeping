@@ -1,5 +1,12 @@
 import { prisma } from "./db";
 import type { Prisma, PrismaClient } from "@prisma/client";
+import {
+  dateOnlyToUtc,
+  detroitDateTimeToUtc,
+  detroitDayRange,
+  parseDateISO,
+  weekdayOfDateISO,
+} from "./tz";
 
 type Db = PrismaClient | Prisma.TransactionClient;
 
@@ -27,24 +34,34 @@ export interface SlotOption {
  * the race window between "check availability" and "create appointment."
  */
 export async function getOpenSlotsForDate(dateISO: string, db: Db = prisma): Promise<SlotOption[]> {
+  // All scheduling is in America/Detroit regardless of the server's TZ
+  // (Vercel runs in UTC). `dateISO` is a Detroit calendar date and each slot
+  // time is Detroit wall-clock, converted to a UTC instant for comparison.
+  if (!parseDateISO(dateISO)) return [];
+
   const settings = await db.businessSettings.findUnique({ where: { id: "default" } });
   if (!settings || settings.vacationMode) return [];
 
-  const date = new Date(`${dateISO}T00:00:00`);
   const now = new Date();
+  const { start: dayStart, end: dayEnd } = detroitDayRange(dateISO);
 
   const minNoticeMs = settings.minNoticeHours * 60 * 60 * 1000;
   const maxAdvanceMs = settings.maxAdvanceDays * 24 * 60 * 60 * 1000;
-  if (date.getTime() - now.getTime() > maxAdvanceMs) return [];
-  if (date.getTime() < now.getTime() - 24 * 60 * 60 * 1000) return [];
+  if (dayStart.getTime() - now.getTime() > maxAdvanceMs) return [];
+  if (dayEnd.getTime() <= now.getTime()) return [];
 
-  const dayStart = new Date(`${dateISO}T00:00:00`);
-  const dayEnd = new Date(`${dateISO}T23:59:59`);
-
-  const blackout = await db.blackoutDate.findFirst({ where: { date: { gte: dayStart, lt: dayEnd } } });
+  // Blackout dates are calendar days stored at UTC midnight. Legacy rows
+  // written with server-local midnight land within the same UTC day
+  // (00:00Z on Vercel, 04:00–05:00Z from a Detroit machine), so a UTC-day
+  // window matches both without touching existing data.
+  const blackoutDayStart = dateOnlyToUtc(dateISO)!;
+  const blackoutDayEnd = new Date(blackoutDayStart.getTime() + 24 * 60 * 60 * 1000);
+  const blackout = await db.blackoutDate.findFirst({
+    where: { date: { gte: blackoutDayStart, lt: blackoutDayEnd } },
+  });
   if (blackout) return [];
 
-  const dayOfWeek = date.getDay();
+  const dayOfWeek = weekdayOfDateISO(dateISO);
   const rule = await db.availabilityRule.findFirst({ where: { dayOfWeek, isActive: true } });
   if (!rule) return [];
 
@@ -64,26 +81,27 @@ export async function getOpenSlotsForDate(dateISO: string, db: Db = prisma): Pro
     }),
   ]);
   const occupied = [
-    ...existingAppointments.map((a: any) => ({ start: a.scheduledStart, end: a.scheduledEnd })),
-    ...existingBlocks.map((b: any) => ({ start: b.startTime, end: b.endTime })),
+    ...existingAppointments.map((a) => ({ start: a.scheduledStart, end: a.scheduledEnd })),
+    ...existingBlocks.map((b) => ({ start: b.startTime, end: b.endTime })),
   ];
 
   const slots: SlotOption[] = [];
   for (let t = startMin; t + duration <= endMin; t += duration + buffer) {
-    const slotStart = new Date(date);
-    slotStart.setMinutes(t);
+    const hhmm = `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
+    const slotStart = detroitDateTimeToUtc(dateISO, hhmm);
+    if (!slotStart) continue;
     const slotEnd = new Date(slotStart.getTime() + duration * 60000);
 
     if (slotStart.getTime() < now.getTime() + minNoticeMs) continue;
 
-    const overlaps = occupied.some((a: any) => {
+    const overlaps = occupied.some((a) => {
       const bufferedStart = new Date(a.start.getTime() - buffer * 60000);
       const bufferedEnd = new Date(a.end.getTime() + buffer * 60000);
       return slotStart < bufferedEnd && slotEnd > bufferedStart;
     });
     if (overlaps) continue;
 
-    slots.push({ value: `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`, label: minutesToLabel(t) });
+    slots.push({ value: hhmm, label: minutesToLabel(t) });
   }
 
   return slots;

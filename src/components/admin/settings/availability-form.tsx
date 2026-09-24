@@ -9,7 +9,7 @@ import { Input, FormField } from "@/components/ui/form";
 import { saveAvailability } from "@/lib/actions/availability";
 import { addBlackoutDate, removeBlackoutDate } from "@/lib/actions/availability";
 import { DAY_NAMES } from "@/lib/constants";
-import { formatDate } from "@/lib/utils";
+import { formatDateOnly } from "@/lib/tz";
 
 export function AvailabilityForm({ initial }: {
   initial: {
@@ -104,7 +104,7 @@ export function BlackoutDatesManager({ initial }: { initial: { id: string; date:
         <ul className="divide-y divide-navy-100 rounded-lg border border-navy-100">
           {dates.map((d: any) => (
             <li key={d.id} className="flex items-center justify-between px-4 py-2.5 text-sm">
-              <span className="font-medium text-navy-700">{formatDate(d.date)} {d.reason && `— ${d.reason}`}</span>
+              <span className="font-medium text-navy-700">{formatDateOnly(d.date)} {d.reason && `— ${d.reason}`}</span>
               <button
                 onClick={async () => { await removeBlackoutDate(d.id); setDates((prev: any) => prev.filter((x: any) => x.id !== d.id)); }}
                 className="text-navy-300 hover:text-danger-600"

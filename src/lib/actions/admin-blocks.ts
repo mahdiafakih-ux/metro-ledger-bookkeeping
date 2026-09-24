@@ -3,17 +3,16 @@
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { requireAdminSession } from "@/lib/auth";
+import { detroitDateTimeToUtc } from "@/lib/tz";
 
 export async function createAdminBlock(input: { date: string; startTime: string; endTime: string; reason: string }) {
   const session = await requireAdminSession();
   if (!session) return { success: false, error: "Unauthorized" };
 
-  const [startH, startM] = input.startTime.split(":").map(Number);
-  const [endH, endM] = input.endTime.split(":").map(Number);
-  const startTime = new Date(`${input.date}T00:00:00`);
-  startTime.setHours(startH, startM, 0, 0);
-  const endTime = new Date(`${input.date}T00:00:00`);
-  endTime.setHours(endH, endM, 0, 0);
+  // Inputs are Detroit wall-clock times.
+  const startTime = detroitDateTimeToUtc(input.date, input.startTime);
+  const endTime = detroitDateTimeToUtc(input.date, input.endTime);
+  if (!startTime || !endTime) return { success: false, error: "Invalid date or time" };
 
   if (endTime <= startTime) return { success: false, error: "End time must be after start time" };
 

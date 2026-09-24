@@ -160,6 +160,7 @@ model Client {
   accessSessions ClientAccessSession[]
   usageRecords ClientUsage[]
   businessClients BusinessClient[]
+  preferredNotaries PreferredNotary[]
 }
 
 model Business {
@@ -212,6 +213,7 @@ model Business {
   subscriptionEvents SubscriptionEvent[]
   usageRecords  BusinessUsage[]
   clientMembers BusinessClient[]
+  preferredNotaries PreferredNotary[]
 }
 
 // ---------- Scheduling ----------
@@ -257,11 +259,21 @@ model Appointment {
   isRecurring    Boolean @default(false)
   recurrenceRule String  @default("") // "weekly" | "biweekly" | "monthly"
 
-  source String @default("admin") // admin | public_booking
+  source String @default("admin") // admin | public_booking | client_portal
   isDemo Boolean @default(false)
 
   stripeCheckoutSessionId String @default("")
   stripePaymentIntentId   String @default("")
+
+  // Notary assignment & client preference (additive — all optional)
+  assignedNotaryId  String?
+  assignedNotary    Notary? @relation("AppointmentAssignedNotary", fields: [assignedNotaryId], references: [id], onDelete: SetNull)
+  preferredNotaryId String?
+  preferredNotary   Notary? @relation("AppointmentPreferredNotary", fields: [preferredNotaryId], references: [id], onDelete: SetNull)
+  notaryPreference  String  @default("") // "" (not captured) | first_available | preferred | no_preference
+
+  // Set when status becomes "completed" (null for legacy rows / other statuses)
+  completedAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -269,6 +281,9 @@ model Appointment {
   revenueEntries RevenueEntry[]
   mileageLogs    MileageLog[]
   payments       Payment[]
+
+  @@index([assignedNotaryId])
+  @@index([preferredNotaryId])
 }
 
 // ---------- Sales pipeline & outreach ----------
@@ -497,6 +512,7 @@ model ClientAccessSession {
   expiresAt     DateTime
   usedAt        DateTime?
   ipAddress     String   @default("")
+  failedAttempts Int     @default(0) // wrong-code attempts; code is retired at the limit
 
   createdAt     DateTime @default(now())
 }
@@ -593,4 +609,48 @@ model BusinessClient {
   // Indexes for efficient querying
   @@index([clientId])
   @@index([businessId])
+}
+
+// ---------- Notaries ----------
+
+// A Notar-E notary who can be assigned to appointments. Optionally linked to
+// the AdminUser account that notary signs in with (not required).
+model Notary {
+  id           String   @id @default(cuid())
+  displayName  String   // client-facing short name, e.g. "Sarah M."
+  fullName     String   @default("")
+  email        String   @default("")
+  phone        String   @default("")
+  photoUrl     String   @default("") // optional; portal shows initials when empty
+  isActive     Boolean  @default(true)
+  adminUserId  String?  @unique
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  assignedAppointments  Appointment[] @relation("AppointmentAssignedNotary")
+  preferredAppointments Appointment[] @relation("AppointmentPreferredNotary")
+  preferredBy           PreferredNotary[]
+}
+
+// A client's (or a whole business account's) preferred notaries.
+// Exactly one of businessId / clientId is set (CHECK constraint added in the
+// migration SQL — Prisma leaves CHECK constraints alone when diffing).
+// Business-account preferences are shared by every member of that business.
+// "At most one primary" and the per-owner limit are enforced in
+// src/lib/actions/portal-notaries.ts inside a serializable transaction.
+model PreferredNotary {
+  id         String    @id @default(cuid())
+  notaryId   String
+  notary     Notary    @relation(fields: [notaryId], references: [id], onDelete: Cascade)
+  businessId String?
+  business   Business? @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  clientId   String?
+  client     Client?   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  isPrimary  Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+
+  @@unique([businessId, notaryId])
+  @@unique([clientId, notaryId])
+  @@index([notaryId])
 }

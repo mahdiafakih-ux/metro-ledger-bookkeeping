@@ -1,12 +1,8 @@
+import { detroitDayRange, detroitTodayISO } from "@/lib/tz";
 import { prisma } from "@/lib/db";
 import { computeGoalStats } from "@/lib/goal";
 import { getBusinessSettings } from "@/lib/settings";
 
-function startOfDay(d = new Date()) {
-  const x = new Date(d);
-  x.setHours(0, 0, 0, 0);
-  return x;
-}
 function endOfDay(d = new Date()) {
   const x = new Date(d);
   x.setHours(23, 59, 59, 999);
@@ -49,7 +45,8 @@ export async function getDashboardStats() {
     getTotalEarnedCents(),
     prisma.revenueEntry.aggregate({ where: { date: { gte: startOfMonth(now) } }, _sum: { amountCents: true } }),
     prisma.revenueEntry.aggregate({ where: { date: { gte: startOfWeek(now) } }, _sum: { amountCents: true } }),
-    prisma.appointment.count({ where: { scheduledStart: { gte: startOfDay(now), lte: endOfDay(now) }, status: { not: "cancelled" } } }),
+    // "Today" for appointments = the America/Detroit calendar day.
+    prisma.appointment.count({ where: { scheduledStart: { gte: detroitDayRange(detroitTodayISO(now)).start, lt: detroitDayRange(detroitTodayISO(now)).end }, status: { not: "cancelled" } } }),
     prisma.appointment.count({ where: { scheduledStart: { gte: startOfMonth(now) } } }),
     prisma.business.count({ where: { status: "active" } }),
     prisma.client.count({ where: { leadStatus: { in: ["new_lead", "interested"] } } }),

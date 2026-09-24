@@ -1,19 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { jwtVerify } from "jose";
+import { verifySessionTokenOfType } from "@/lib/session-tokens";
 
 const COOKIE_NAME = "notare_admin_session";
 const PUBLIC_ADMIN_PATHS = ["/admin/login"];
 
+// Admin area only accepts admin-typed sessions. A client-portal token signed
+// with the same secret fails the audience/type check here.
 async function isValidSession(token: string | undefined) {
-  if (!token) return false;
-  const secret = process.env.AUTH_SECRET;
-  if (!secret) return false;
-  try {
-    await jwtVerify(token, new TextEncoder().encode(secret));
-    return true;
-  } catch {
-    return false;
-  }
+  return (await verifySessionTokenOfType("admin", token)) !== null;
 }
 
 export async function proxy(request: NextRequest) {
@@ -23,7 +17,7 @@ export async function proxy(request: NextRequest) {
   const isAdminArea = pathname.startsWith("/admin");
 
   if (!isAdminArea && !isProtectedApi) return NextResponse.next();
-  if (PUBLIC_ADMIN_PATHS.some((p: any) => pathname.startsWith(p))) return NextResponse.next();
+  if (PUBLIC_ADMIN_PATHS.some((p) => pathname.startsWith(p))) return NextResponse.next();
 
   const token = request.cookies.get(COOKIE_NAME)?.value;
   const valid = await isValidSession(token);

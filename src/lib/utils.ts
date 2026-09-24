@@ -1,4 +1,5 @@
 import { clsx, type ClassValue } from "clsx";
+import { BUSINESS_TIME_ZONE } from "./tz";
 
 export function cn(...inputs: ClassValue[]) {
   return clsx(inputs);
@@ -24,9 +25,12 @@ export function formatDate(date: Date | string, opts: Intl.DateTimeFormatOptions
   });
 }
 
+// Instants (appointments, blocks, createdAt) always render in the business
+// timezone, independent of server TZ (UTC on Vercel) or viewer's browser.
 export function formatDateTime(date: Date | string) {
   const d = typeof date === "string" ? new Date(date) : date;
   return d.toLocaleString("en-US", {
+    timeZone: BUSINESS_TIME_ZONE,
     month: "short",
     day: "numeric",
     year: "numeric",
@@ -37,7 +41,7 @@ export function formatDateTime(date: Date | string) {
 
 export function formatTime(date: Date | string) {
   const d = typeof date === "string" ? new Date(date) : date;
-  return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  return d.toLocaleTimeString("en-US", { timeZone: BUSINESS_TIME_ZONE, hour: "numeric", minute: "2-digit" });
 }
 
 export function telHref(phone: string) {

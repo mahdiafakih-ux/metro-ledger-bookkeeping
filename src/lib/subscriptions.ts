@@ -2,6 +2,7 @@ import Stripe from "stripe";
 import { getStripeClient, getSiteUrl } from "@/lib/stripe";
 import { prisma } from "@/lib/db";
 import { getBusinessSettings } from "@/lib/settings";
+import { syncBusinessUsageSafe } from "@/lib/usage";
 
 /**
  * Create or get a Stripe customer for a client
@@ -260,6 +261,8 @@ export async function handleSubscriptionCreated(subscription: Stripe.Subscriptio
         status: "active",
       },
     });
+    // Counting only — recount usage for the new billing period. Never bills.
+    await syncBusinessUsageSafe(businessId);
   } else if (clientId) {
     await prisma.client.update({
       where: { id: clientId },
@@ -306,6 +309,8 @@ export async function handleSubscriptionUpdated(subscription: Stripe.Subscriptio
         currentPeriodEnd,
       },
     });
+    // Period may have rolled over (renewal) — recount. Counting only, never bills.
+    await syncBusinessUsageSafe(businessId);
   } else if (clientId) {
     await prisma.client.update({
       where: { id: clientId },

@@ -2,68 +2,47 @@
 
 import { useState } from "react";
 import { toast } from "sonner";
-import { Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardBody } from "@/components/ui/card";
+import { ExternalLink, Loader2 } from "lucide-react";
+import { buttonClasses } from "./ui";
+import { cn } from "@/lib/utils";
 
-type Client = {
-  id: string;
-  stripeCustomerId: string;
-};
-
-export function BillingClient({ client }: { client: Client }) {
+/**
+ * Opens the existing Stripe Customer Portal via POST /api/portal. The server
+ * derives the Stripe customer from the signed-in session — nothing sensitive
+ * is sent from the browser.
+ */
+export function BillingPortalButton({
+  label = "Manage billing",
+  variant = "secondary",
+  className,
+}: {
+  label?: string;
+  variant?: "primary" | "secondary" | "dark";
+  className?: string;
+}) {
   const [loading, setLoading] = useState(false);
 
-  async function openStripePortal() {
-    if (!client.stripeCustomerId) {
-      toast.error("Stripe customer ID not found");
-      return;
-    }
-
+  async function open() {
     setLoading(true);
     try {
-      const res = await fetch("/api/portal", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ customerId: client.stripeCustomerId }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        toast.error(data.error || "Failed to open billing portal");
+      const res = await fetch("/api/portal", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+      const data = (await res.json().catch(() => ({}))) as { portalUrl?: string; error?: string };
+      if (!res.ok || !data.portalUrl) {
+        toast.error(data.error || "Billing management is unavailable right now. Please contact us.");
+        setLoading(false);
         return;
       }
-
-      // Redirect to Stripe Customer Portal
-      if (data.portalUrl) {
-        window.location.href = data.portalUrl;
-      }
-    } catch (error) {
-      toast.error("An error occurred");
-    } finally {
+      window.location.assign(data.portalUrl); // external Stripe-hosted page
+    } catch {
+      toast.error("Couldn't reach billing. Check your connection and try again.");
       setLoading(false);
     }
   }
 
   return (
-    <Card>
-      <CardBody>
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="font-semibold text-navy-900">Payment Method & Subscription</h3>
-            <p className="text-sm text-navy-600 mt-1">
-              Manage your payment method, billing address, and subscription settings in the Stripe portal
-            </p>
-          </div>
-          <Button onClick={openStripePortal} disabled={loading}>
-            {loading ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            ) : null}
-            Manage Billing
-          </Button>
-        </div>
-      </CardBody>
-    </Card>
+    <button type="button" onClick={open} disabled={loading} className={cn(buttonClasses(variant, "md"), className)}>
+      {loading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <ExternalLink className="h-4 w-4" aria-hidden />}
+      {label}
+    </button>
   );
 }
