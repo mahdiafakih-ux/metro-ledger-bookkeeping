@@ -11,6 +11,8 @@ import {
   ScrollText,
   FileQuestion,
   ArrowRight,
+  MapPin,
+  Monitor,
 } from "lucide-react";
 import { SectionHeading } from "@/components/site/section-heading";
 import { ComplianceNote } from "@/components/site/compliance-note";
@@ -83,6 +85,44 @@ export default function ServicesPage() {
         title="Notary services for every document"
         description="From a single acknowledgment to a full real estate closing, Notar-E Services handles the notarial act quickly and professionally."
       />
+
+      {/* Mobile & Online Notarization intro */}
+      <div className="mt-14 grid gap-6 sm:grid-cols-2">
+        <div className="flex flex-col rounded-2xl border border-navy-100 bg-white p-7 shadow-sm">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent-100 text-accent-600">
+            <MapPin className="h-5 w-5" />
+          </div>
+          <h3 className="mt-4 text-lg font-bold text-navy-900">Mobile Notary</h3>
+          <p className="mt-2 text-sm leading-relaxed text-navy-500">
+            Professional notary services at your location. We come to your home, office, or any
+            convenient spot in Metro Detroit and Southeast Michigan.
+          </p>
+          <div className="mt-6">
+            <LinkButton href="/book" size="md" className="w-fit">
+              Book Mobile <ArrowRight className="h-4 w-4" />
+            </LinkButton>
+          </div>
+        </div>
+        <div className="flex flex-col rounded-2xl border border-navy-100 bg-white p-7 shadow-sm">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent-100 text-accent-600">
+            <Monitor className="h-5 w-5" />
+          </div>
+          <h3 className="mt-4 text-lg font-bold text-navy-900">Remote Online Notarization</h3>
+          <p className="mt-2 text-sm leading-relaxed text-navy-500">
+            Eligible documents and transactions can be notarized completely online — secure, fast,
+            and legally valid where permitted.
+          </p>
+          <p className="mt-3 text-xs leading-relaxed text-navy-400 border-t border-navy-100 pt-3">
+            Remote online notarization is available for eligible documents and transactions only.
+            Not all documents qualify. We&apos;ll confirm eligibility when you book.
+          </p>
+          <div className="mt-6">
+            <LinkButton href="/book" size="md" className="w-fit">
+              Start Online <ArrowRight className="h-4 w-4" />
+            </LinkButton>
+          </div>
+        </div>
+      </div>
 
       <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {CATEGORIES.map((c) => (

@@ -1,105 +1,250 @@
 import type { Metadata } from "next";
 import {
-  ArrowRight,
   Building2,
-  Landmark,
-  Home as HomeIcon,
   Scale,
+  Home,
+  Landmark,
   Car,
-  Users,
-  ShieldPlus,
-  CalendarCheck,
-  Receipt,
-  BarChart3,
-  Repeat,
-  Zap,
-  UserCheck,
+  Key,
+  Banknote,
+  Heart,
 } from "lucide-react";
+import Link from "next/link";
 import { SectionHeading } from "@/components/site/section-heading";
-import { LinkButton } from "@/components/ui/button";
-import { PricingCard } from "@/components/site/pricing-card";
+import { CostEstimator } from "@/components/site/cost-estimator";
 import { getActivePricingPlans } from "@/lib/settings";
+import { formatCents } from "@/lib/money";
 
 export const metadata: Metadata = {
-  title: "Business Notary Solutions",
+  title: "Business Notary Solutions | Business10 & Business30",
   description:
-    "On-demand notary service for title companies, mortgage companies, real estate professionals, law firms, property managers, dealerships, and financial institutions across Michigan.",
+    "Dedicated notary services for title companies, law firms, real estate teams, dealerships, and more. Flat-rate monthly plans with mobile and remote online notarization.",
 };
 
-const TARGETS = [
-  { icon: Landmark, label: "Title Companies" },
-  { icon: Building2, label: "Mortgage Companies" },
-  { icon: HomeIcon, label: "Real Estate Professionals" },
-  { icon: Scale, label: "Law Firms" },
-  { icon: Users, label: "Property Managers" },
-  { icon: Car, label: "Dealerships" },
-  { icon: ShieldPlus, label: "Financial Organizations" },
-  { icon: UserCheck, label: "Healthcare Organizations" },
+const WHO_WE_SERVE = [
+  { icon: Building2, name: "Title Companies", desc: "Closing packages handled on your timeline." },
+  { icon: Scale, name: "Law Firms", desc: "Affidavits, power of attorney, and legal filings." },
+  { icon: Home, name: "Real Estate Agencies", desc: "Deeds, disclosures, and buyer paperwork." },
+  { icon: Landmark, name: "Mortgage Companies", desc: "Loan documents and lender packages." },
+  { icon: Car, name: "Auto Dealerships", desc: "Title transfers and vehicle purchase paperwork." },
+  { icon: Key, name: "Property Management", desc: "Lease agreements and tenant documentation." },
+  { icon: Banknote, name: "Financial Institutions", desc: "Bank forms and financial agreements." },
+  { icon: Heart, name: "Healthcare Organizations", desc: "Patient directives and healthcare authorizations." },
 ];
 
 const BENEFITS = [
-  { icon: CalendarCheck, title: "Priority Scheduling", desc: "Your appointments jump the queue — no more waiting days for a notary." },
-  { icon: Receipt, title: "Centralized Billing", desc: "One clean monthly invoice instead of tracking receipts across appointments." },
-  { icon: Zap, title: "Fast Response Times", desc: "Most requests confirmed same-day, with in-person and remote options." },
-  { icon: Users, title: "Dedicated Service", desc: "A consistent point of contact who understands your document flow." },
-  { icon: BarChart3, title: "Usage Tracking", desc: "See exactly how many appointments you've used, right in your account." },
-  { icon: Repeat, title: "Recurring Service", desc: "Set it and forget it — regular signings without repeat scheduling." },
+  {
+    title: "Priority Scheduling",
+    desc: "No waiting. Your appointments are prioritized.",
+  },
+  {
+    title: "Mobile & Online",
+    desc: "Mobile notary and remote online notarization for eligible documents.",
+  },
+  {
+    title: "Centralized Billing",
+    desc: "One monthly invoice for your entire team.",
+  },
+  {
+    title: "Usage Tracking",
+    desc: "See how many appointments you've used this billing period.",
+  },
+  {
+    title: "Client Portal",
+    desc: "Manage appointments and billing in one place.",
+  },
+  {
+    title: "Dedicated Support",
+    desc: "A single point of contact for your notary needs.",
+  },
 ];
 
 export default async function BusinessSolutionsPage() {
   const allPlans = await getActivePricingPlans();
-  const plans = allPlans.filter((p) => p.billingPeriod === "monthly");
+  const plans = allPlans.filter(
+    (p) => p.billingPeriod === "monthly" && p.isActive && p.key !== "unlimited"
+  );
 
   return (
     <>
-      <section className="bg-navy-950 py-24">
-        <div className="mx-auto max-w-5xl px-4 text-center sm:px-6 lg:px-8">
-          <p className="mb-4 text-xs font-bold uppercase tracking-[0.3em] text-accent-300">Business Solutions</p>
-          <h1 className="text-4xl font-extrabold tracking-tight text-white sm:text-5xl">
-            Your On-Demand Notary Partner
+      {/* Hero */}
+      <section className="bg-navy-950 px-4 py-24 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-4xl text-center">
+          <span className="inline-block rounded-full bg-accent-500/20 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.2em] text-accent-300">
+            Business Solutions
+          </span>
+          <h1 className="mt-6 text-4xl font-extrabold tracking-tight text-white sm:text-5xl lg:text-6xl">
+            Notarization that keeps up with your business.
           </h1>
-          <p className="mx-auto mt-6 max-w-2xl text-lg text-navy-200">
-            Stop searching for a notary every time you need one. Notar-E Services becomes an
-            extension of your team — with priority scheduling, simple monthly invoicing, and fast
-            turnaround for every closing, signing, and document.
+          <p className="mt-6 text-lg leading-relaxed text-navy-200">
+            Dedicated notary services for title companies, law firms, real estate teams,
+            dealerships, and more.
           </p>
-          <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <LinkButton href="/contact" size="lg">
-              Become a Business Partner <ArrowRight className="h-4 w-4" />
-            </LinkButton>
-            <LinkButton href="#pricing" variant="outline" size="lg" className="border-white/20 text-white hover:bg-white/10">
-              View Business Pricing
-            </LinkButton>
+          <div className="mt-10 flex flex-wrap justify-center gap-4">
+            <Link
+              href="/contact"
+              className="inline-flex h-12 items-center rounded-xl bg-accent-500 px-7 text-base font-semibold text-white shadow-lg shadow-accent-500/30 transition hover:bg-accent-600"
+            >
+              Get Started
+            </Link>
+            <Link
+              href="#pricing"
+              className="inline-flex h-12 items-center rounded-xl border border-navy-600 px-7 text-base font-semibold text-white transition hover:bg-navy-800"
+            >
+              See Pricing ↓
+            </Link>
           </div>
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
-        <SectionHeading eyebrow="Who We Serve" title="Built for organizations with frequent document needs" />
-        <div className="mt-12 grid grid-cols-2 gap-4 sm:grid-cols-4">
-          {TARGETS.map((t) => (
-            <div key={t.label} className="flex flex-col items-center gap-3 rounded-2xl border border-navy-100 p-6 text-center">
-              <t.icon className="h-6 w-6 text-accent-600" />
-              <p className="text-sm font-semibold text-navy-800">{t.label}</p>
-            </div>
-          ))}
+      {/* Who We Serve */}
+      <section className="bg-white px-4 py-20 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl">
+          <SectionHeading
+            eyebrow="Who We Serve"
+            title="Built for every business that needs notarization"
+          />
+          <div className="mt-14 grid gap-5 grid-cols-2 lg:grid-cols-4">
+            {WHO_WE_SERVE.map((item) => (
+              <div
+                key={item.name}
+                className="flex flex-col items-center rounded-xl border border-navy-100 bg-white p-6 text-center shadow-sm transition-shadow hover:shadow-md"
+              >
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-accent-100 text-accent-600">
+                  <item.icon className="h-5 w-5" />
+                </div>
+                <h3 className="mt-4 font-bold text-navy-900">{item.name}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-navy-500">{item.desc}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
-      <section className="bg-navy-50 py-20">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      {/* Business Plan Comparison */}
+      <section id="pricing" className="bg-navy-50 px-4 py-20 sm:px-6 lg:px-8 scroll-mt-20">
+        <div className="mx-auto max-w-5xl">
           <SectionHeading
-            eyebrow="Why Partner With Us"
-            title="Everything your team needs, without the overhead"
-            description="No more calling around, negotiating one-off rates, or waiting on availability. We handle the logistics — you focus on closing business."
+            eyebrow="Pricing"
+            title="Simple, predictable pricing"
+            description="One flat monthly fee. $75 per appointment after your included allowance."
+          />
+          <div className="mt-14 grid gap-8 sm:grid-cols-2">
+            {plans.map((plan) => (
+              <div
+                key={plan.key}
+                className={`relative flex flex-col rounded-2xl border p-8 ${
+                  plan.highlight
+                    ? "border-accent-500 bg-navy-900 text-white shadow-xl shadow-accent-500/20"
+                    : "border-navy-200 bg-white"
+                }`}
+              >
+                {plan.highlight && (
+                  <span className="absolute -top-3 left-1/2 -translate-x-1/2 inline-flex items-center rounded-full bg-accent-500 px-4 py-1 text-xs font-bold uppercase tracking-wide text-white shadow">
+                    Most Popular
+                  </span>
+                )}
+                <h3
+                  className={`text-xl font-bold ${
+                    plan.highlight ? "text-white" : "text-navy-900"
+                  }`}
+                >
+                  {plan.name}
+                </h3>
+                <div className="mt-4 flex items-baseline gap-1">
+                  <span
+                    className={`text-4xl font-extrabold tracking-tight ${
+                      plan.highlight ? "text-white" : "text-navy-900"
+                    }`}
+                  >
+                    {formatCents(plan.totalCents, { showCents: false })}
+                  </span>
+                  <span
+                    className={`text-sm font-medium ${
+                      plan.highlight ? "text-navy-300" : "text-navy-400"
+                    }`}
+                  >
+                    /mo
+                  </span>
+                </div>
+                <p
+                  className={`mt-2 text-sm font-medium ${
+                    plan.highlight ? "text-navy-300" : "text-navy-500"
+                  }`}
+                >
+                  {plan.appointmentsIncluded} appointments/month
+                </p>
+                <p
+                  className={`mt-1 text-xs ${
+                    plan.highlight ? "text-navy-400" : "text-navy-400"
+                  }`}
+                >
+                  $75 per additional appointment
+                </p>
+                <ul className="mt-6 flex-1 space-y-3">
+                  {plan.features.map((f) => (
+                    <li key={f} className="flex items-start gap-2.5 text-sm">
+                      <span
+                        className={`mt-0.5 shrink-0 text-base leading-none ${
+                          plan.highlight ? "text-accent-400" : "text-accent-600"
+                        }`}
+                      >
+                        ✓
+                      </span>
+                      <span className={plan.highlight ? "text-navy-100" : "text-navy-600"}>
+                        {f}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <Link
+                  href="/contact"
+                  className={`mt-8 inline-flex h-12 w-full items-center justify-center rounded-xl text-base font-semibold transition ${
+                    plan.highlight
+                      ? "bg-accent-500 text-white hover:bg-accent-600"
+                      : "bg-navy-900 text-white hover:bg-navy-800"
+                  }`}
+                >
+                  Talk to Our Team
+                </Link>
+              </div>
+            ))}
+          </div>
+          <p className="mt-8 text-center text-xs text-navy-400 max-w-2xl mx-auto">
+            Additional appointments beyond your included allowance are billed at $75 each.
+            Statutory notarial fees (Michigan MCL 55.287: $10/act) are always disclosed separately.
+          </p>
+        </div>
+      </section>
+
+      {/* Interactive Cost Estimator */}
+      <section className="bg-white px-4 py-20 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-5xl">
+          <SectionHeading
+            eyebrow="Estimator"
+            title="Estimate your monthly cost"
+            description="See how the plans compare at your expected volume."
+          />
+          <div className="mt-12">
+            <CostEstimator />
+          </div>
+        </div>
+      </section>
+
+      {/* Benefits */}
+      <section className="bg-navy-50 px-4 py-20 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl">
+          <SectionHeading
+            eyebrow="Included"
+            title="What's included with every business plan"
           />
           <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {BENEFITS.map((b) => (
-              <div key={b.title} className="rounded-2xl bg-white p-6 shadow-sm">
-                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent-100 text-accent-600">
-                  <b.icon className="h-5 w-5" />
-                </div>
-                <h3 className="mt-4 font-bold text-navy-900">{b.title}</h3>
+              <div
+                key={b.title}
+                className="rounded-xl border border-navy-100 bg-white p-6 shadow-sm"
+              >
+                <h3 className="font-bold text-navy-900">{b.title}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-navy-500">{b.desc}</p>
               </div>
             ))}
@@ -107,29 +252,20 @@ export default async function BusinessSolutionsPage() {
         </div>
       </section>
 
-      <section id="pricing" className="mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8 scroll-mt-20">
-        <SectionHeading
-          eyebrow="Business Pricing"
-          title="Plans built for volume"
-          description="Statutory notarial fees are always disclosed separately from your service plan, per Michigan law."
-        />
-        <div className="mt-14 grid gap-8 lg:grid-cols-2 lg:max-w-4xl lg:mx-auto">
-          {plans.map((plan) => (
-            <PricingCard key={plan.key} plan={plan} />
-          ))}
-        </div>
-      </section>
-
-      <section className="bg-accent-600 py-16">
-        <div className="mx-auto flex max-w-4xl flex-col items-center gap-6 px-4 text-center sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-bold text-white">Let&apos;s build a plan around your volume</h2>
-          <p className="text-accent-100">
-            Tell us how many appointments you typically need per month and we&apos;ll recommend the
-            right plan — including custom terms for high-volume partners.
-          </p>
-          <LinkButton href="/contact" variant="dark" size="lg" className="bg-white text-accent-700 hover:bg-navy-50">
-            Become a Business Partner <ArrowRight className="h-4 w-4" />
-          </LinkButton>
+      {/* Bottom CTA */}
+      <section className="bg-accent-600 px-4 py-20 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-3xl text-center">
+          <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
+            Ready to partner with Notar-E?
+          </h2>
+          <div className="mt-10">
+            <Link
+              href="/contact"
+              className="inline-flex h-12 items-center rounded-xl bg-white px-8 text-base font-semibold text-accent-600 shadow-lg transition hover:bg-navy-50"
+            >
+              Get Started
+            </Link>
+          </div>
         </div>
       </section>
     </>
