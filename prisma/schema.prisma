@@ -364,3 +364,28 @@ model LeadCapture {
   handled            Boolean  @default(false)
   createdAt          DateTime @default(now())
 }
+
+// ---------- Careers ----------
+
+model CareerApplication {
+  id                     String   @id @default(cuid())
+  firstName              String
+  lastName               String
+  email                  String
+  phone                  String
+  city                   String
+  state                  String
+  roleInterest           String
+  isCommissionedNotary   Boolean  @default(false)
+  commissionState        String   @default("")
+  commissionExpiry       String   @default("")
+  mobileExperience       Boolean  @default(false)
+  ronExperience          Boolean  @default(false)
+  signingAgentExperience Boolean  @default(false)
+  availability           String   @default("")
+  linkedinUrl            String   @default("")
+  message                String   @default("")
+  status                 String   @default("new") // new|reviewing|interview|approved|rejected
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+}

@@ -97,10 +97,10 @@ async function main() {
   // --- Demo Businesses ---
   const businesses = await Promise.all(
     [
-      { companyName: "Metro Title Group", category: "title_company", contactName: "Rebecca Long", email: "rebecca@metrotitlegroup.example", phone: "(313) 555-0200", packageKey: "business20", monthlyUsage: 14, monthlyRevenueCents: 250000, status: "active" },
-      { companyName: "Great Lakes Mortgage Co.", category: "mortgage_company", contactName: "Tom Ferraro", email: "tferraro@glmortgage.example", phone: "(248) 555-0221", packageKey: "unlimited", monthlyUsage: 31, monthlyRevenueCents: 400000, status: "active" },
+      { companyName: "Metro Title Group", category: "title_company", contactName: "Rebecca Long", email: "rebecca@metrotitlegroup.example", phone: "(313) 555-0200", packageKey: "business30", monthlyUsage: 14, monthlyRevenueCents: 300000, status: "active" },
+      { companyName: "Great Lakes Mortgage Co.", category: "mortgage_company", contactName: "Tom Ferraro", email: "tferraro@glmortgage.example", phone: "(248) 555-0221", packageKey: "business30", monthlyUsage: 31, monthlyRevenueCents: 300000, status: "active" },
       { companyName: "Dearborn Family Dentistry", category: "healthcare", contactName: "Dr. Nadia Youssef", email: "office@dearbornfamilydental.example", phone: "(313) 555-0255", packageKey: "", monthlyUsage: 0, monthlyRevenueCents: 0, status: "lead" },
-      { companyName: "Prestige Auto Group", category: "dealership", contactName: "Mike Robertson", email: "mrobertson@prestigeauto.example", phone: "(586) 555-0266", packageKey: "business20", monthlyUsage: 9, monthlyRevenueCents: 250000, status: "active" },
+      { companyName: "Prestige Auto Group", category: "dealership", contactName: "Mike Robertson", email: "mrobertson@prestigeauto.example", phone: "(586) 555-0266", packageKey: "business30", monthlyUsage: 9, monthlyRevenueCents: 300000, status: "active" },
       { companyName: "Somerset Senior Living", category: "senior_living", contactName: "Patricia Nowak", email: "pnowak@somersetsl.example", phone: "(248) 555-0288", packageKey: "", monthlyUsage: 0, monthlyRevenueCents: 0, status: "lead" },
     ].map((b) =>
       prisma.business.create({
@@ -342,7 +342,7 @@ async function main() {
       isDemo: true,
       items: {
         create: [
-          { description: "Business Package — 14 appointments this month", type: "other_service", quantity: 1, unitAmountCents: 250000, amountCents: 250000 },
+          { description: "Business30 Package — 14 appointments this month", type: "other_service", quantity: 1, unitAmountCents: 300000, amountCents: 300000 },
         ],
       },
     },
@@ -378,7 +378,7 @@ async function main() {
       isDemo: true,
       items: {
         create: [
-          { description: "Unlimited Business Plan — monthly", type: "other_service", quantity: 1, unitAmountCents: 400000, amountCents: 400000 },
+          { description: "Business30 Plan — monthly", type: "other_service", quantity: 1, unitAmountCents: 300000, amountCents: 300000 },
         ],
       },
     },
@@ -388,7 +388,7 @@ async function main() {
   await prisma.leadCapture.createMany({
     data: [
       { name: "Kevin Brooks", company: "", email: "kbrooks@example.com", phone: "(313) 555-0410", serviceNeeded: "Power of Attorney", message: "Need a POA notarized this week.", isBusinessLead: false },
-      { name: "Lauren Kim", company: "Kim & Associates Realty", email: "lkim@kimrealty.example", phone: "(248) 555-0455", serviceNeeded: "Recurring business service", message: "Interested in the Business 20 plan for our closings.", estimatedAppointmentsPerMonth: "15-20", isBusinessLead: true },
+      { name: "Lauren Kim", company: "Kim & Associates Realty", email: "lkim@kimrealty.example", phone: "(248) 555-0455", serviceNeeded: "Recurring business service", message: "Interested in the Business30 plan for our closings.", estimatedAppointmentsPerMonth: "15-20", isBusinessLead: true },
     ],
   });
 
