@@ -9,6 +9,7 @@ import { Input, Textarea, Select, FormField } from "@/components/ui/form";
 import { createBusiness, updateBusiness, type BusinessInput } from "@/lib/actions/businesses";
 import { BUSINESS_CATEGORIES, BUSINESS_CATEGORY_LABELS } from "@/lib/constants";
 import { titleCase } from "@/lib/utils";
+import { planDisplayName } from "@/lib/plans";
 
 export function BusinessForm({ businessId, initial, pricingPlans }: { businessId?: string; initial?: Partial<BusinessInput>; pricingPlans: { key: string; name: string }[] }) {
   const router = useRouter();
@@ -101,7 +102,10 @@ export function BusinessForm({ businessId, initial, pricingPlans }: { businessId
           <FormField label="Assigned Plan">
             <Select value={packageKey} onChange={(e) => setPackageKey(e.target.value)}>
               <option value="">— None —</option>
-              {pricingPlans.map((p: any) => <option key={p.key} value={p.key}>{p.name}</option>)}
+              {pricingPlans.map((p) => <option key={p.key} value={p.key}>{p.name}</option>)}
+              {packageKey && !pricingPlans.some((p) => p.key === packageKey) && (
+                <option value={packageKey}>{planDisplayName(packageKey)} (legacy)</option>
+              )}
             </Select>
           </FormField>
           <FormField label="Monthly Revenue ($)"><Input type="number" min={0} step="0.01" value={monthlyRevenue} onChange={(e) => setMonthlyRevenue(Number(e.target.value))} /></FormField>

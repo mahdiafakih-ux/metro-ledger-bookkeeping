@@ -1,5 +1,6 @@
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
+import { randomInt } from "node:crypto";
 
 const PORTAL_COOKIE_NAME = "notare_client_portal";
 const SESSION_DURATION_SECONDS = 60 * 60 * 24 * 30; // 30 days
@@ -21,9 +22,12 @@ export type ClientSessionPayload = {
 /**
  * Create a JWT token for client portal access
  */
+export const CLIENT_TOKEN_AUDIENCE = "notare:client";
+
 export async function createClientSessionToken(payload: ClientSessionPayload) {
   return new SignJWT({ ...payload })
     .setProtectedHeader({ alg: "HS256" })
+    .setAudience(CLIENT_TOKEN_AUDIENCE)
     .setIssuedAt()
     .setExpirationTime(`${SESSION_DURATION_SECONDS}s`)
     .sign(getSecretKey());
@@ -35,6 +39,9 @@ export async function createClientSessionToken(payload: ClientSessionPayload) {
 export async function verifyClientSessionToken(token: string): Promise<ClientSessionPayload | null> {
   try {
     const { payload } = await jwtVerify(token, getSecretKey());
+    // Reject admin tokens (and anything else) presented as a client session.
+    if (typeof payload.clientId !== "string" || !payload.clientId || "userId" in payload) return null;
+    if (payload.aud !== undefined && payload.aud !== CLIENT_TOKEN_AUDIENCE) return null;
     return payload as unknown as ClientSessionPayload;
   } catch {
     return null;
@@ -85,7 +92,8 @@ export async function requireClientSession(): Promise<ClientSessionPayload | nul
  * Helper to generate a temporary access code (6 digits)
  */
 export function generateAccessCode(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  // Cryptographically secure — Math.random() is predictable.
+  return randomInt(100000, 1000000).toString();
 }
 
 /**

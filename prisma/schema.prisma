@@ -50,8 +50,8 @@ model BusinessSettings {
   goalStartDate        DateTime @default(now())
 
   // Homepage wording (editable)
-  heroHeadline         String   @default("Notarization Made Simple.")
-  heroSubheadline      String   @default("Professional Michigan notary services — when and where you need them.")
+  heroHeadline         String   @default("Notarization, wherever you are.")
+  heroSubheadline      String   @default("Mobile and online notary services built for individuals and businesses.")
 
   // Daily scorecard / outreach targets
   targetBusinessesContacted Int @default(20)
@@ -99,7 +99,7 @@ model AdminBlock {
 
 model PricingPlan {
   id                   String   @id @default(cuid())
-  key                  String   @unique // "individual" | "business20" | "unlimited"
+  key                  String   @unique // "individual" | "business10" | "business30" | "unlimited" (discontinued, kept inactive for history)
   name                 String
   billingPeriod        String   // "one_time" | "monthly"
   statutoryFeeCents    Int      // Michigan-compliant per-act notarial fee (max $10/act)
@@ -107,8 +107,8 @@ model PricingPlan {
   serviceFeeCents      Int      // travel / signing-agent / admin / handling — non-notarial
   serviceFeeLabel      String   @default("Signing Agent & Service Fee")
   totalCents           Int      // statutoryFeeCents*actsIncluded + serviceFeeCents (or monthly total)
-  appointmentsIncluded Int?     // null = unlimited
-  overageFeeCents      Int?     // e.g. 5000 = $50 per additional appointment
+  appointmentsIncluded Int?     // notarizations included per month (subscription numbers come from src/lib/plans.ts)
+  overageFeeCents      Int?     // e.g. 7500 = $75 per additional notarization
   description          String
   features             String   // JSON array of strings
   highlight            Boolean  @default(false)
@@ -141,7 +141,7 @@ model Client {
   // Stripe subscription tracking
   stripeCustomerId    String    @default("")
   stripeSubscriptionId String   @default("")
-  currentPlanKey      String    @default("") // individual | business30 | unlimited
+  currentPlanKey      String    @default("") // individual | business10 | business30 | unlimited (legacy)
   subscriptionStatus  String    @default("") // active | past_due | canceled | incomplete
   nextBillingDate     DateTime?
   monthlyUsageCount   Int       @default(0) // for business30 plan
@@ -193,10 +193,10 @@ model Business {
   // Stripe subscription tracking
   stripeCustomerId    String    @default("")
   stripeSubscriptionId String   @default("")
-  currentPlanKey      String    @default("") // business30 | unlimited
+  currentPlanKey      String    @default("") // business10 | business30 | unlimited (legacy, discontinued)
   subscriptionStatus  String    @default("") // active | past_due | canceled | incomplete
   nextBillingDate     DateTime?
-  monthlyUsageCount   Int       @default(0) // for business30 plan
+  monthlyUsageCount   Int       @default(0) // notarizations used this billing period (cache of BusinessUsage)
   monthlyUsageResetDate DateTime?
 
   // Stripe billing cycle (from Stripe subscription)
@@ -518,7 +518,8 @@ model LeadCapture {
 
 // ---------- Subscription usage tracking ----------
 
-// Business subscription usage (for overage billing on Business30)
+// Business subscription usage (Business10 / Business30 metering + overage billing).
+// One row per completed appointment; `units` = notarizations (notarial acts).
 model BusinessUsage {
   id                      String   @id @default(cuid())
   businessId              String
@@ -530,8 +531,12 @@ model BusinessUsage {
   billingPeriodStart      DateTime // Stripe billing period start
   billingPeriodEnd        DateTime // Stripe billing period end
 
+  planKey                 String   @default("") // plan in force when metered: business10 | business30
+  units                   Int      @default(1)  // notarizations counted for this appointment
   isOverage               Boolean  @default(false)
-  overageAmountCents      Int      @default(0) // $50 per overage appointment
+  overageUnits            Int      @default(0)  // how many of `units` exceeded the plan's included amount
+  overageUnitCents        Int      @default(0)  // rate per overage notarization at metering time ($75 = 7500)
+  overageAmountCents      Int      @default(0)  // overageUnits * overageUnitCents
 
   // BILLING STATE: Track whether this overage has been invoiced
   billingStatus           String   @default("unbilled") // unbilled | invoiced | failed
@@ -593,4 +598,69 @@ model BusinessClient {
   // Indexes for efficient querying
   @@index([clientId])
   @@index([businessId])
+}
+
+// ---------- Careers ----------
+
+// Roles the owner has explicitly opened. The public /careers page only
+// claims "hiring" for rows where isActive = true; otherwise it invites people
+// to join the Notar-E network / express interest.
+model JobOpening {
+  id          String   @id @default(cuid())
+  title       String
+  roleKey     String   @default("other") // matches CAREER_ROLES keys
+  location    String   @default("Metro Detroit, MI")
+  employment  String   @default("Contract") // Contract | Part-time | Full-time
+  summary     String   @default("")
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  applications CareerApplication[]
+}
+
+model CareerApplication {
+  id                   String    @id @default(cuid())
+  firstName            String
+  lastName             String
+  email                String
+  phone                String
+  city                 String
+  state                String
+  roleKey              String    // commissioned_notary | mobile_notary | ron_notary | signing_agent | sales | operations | other
+  jobOpeningId         String?
+  jobOpening           JobOpening? @relation(fields: [jobOpeningId], references: [id], onDelete: SetNull)
+  isCommissioned       Boolean   @default(false)
+  commissionState      String    @default("")
+  commissionExpiration DateTime?
+  mobileExperience     String    @default("none") // none | lt1 | 1to3 | 3plus
+  ronExperience        String    @default("none")
+  signingAgentExperience String  @default("none")
+  availability         String    @default("")
+  linkedinUrl          String    @default("")
+  message              String    @default("")
+  status               String    @default("new") // new | reviewing | interview | approved | rejected
+  adminNotes           String    @default("")
+  ipAddress            String    @default("")
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  resume               CareerResume?
+
+  @@index([status])
+  @@index([createdAt])
+}
+
+// Resume bytes live in their own table so list queries never load them.
+// Served only through an admin-authenticated route — never a public URL.
+model CareerResume {
+  id            String            @id @default(cuid())
+  applicationId String            @unique
+  application   CareerApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  fileName      String
+  mimeType      String
+  sizeBytes     Int
+  data          Bytes
+  createdAt     DateTime          @default(now())
 }

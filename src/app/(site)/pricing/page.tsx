@@ -1,96 +1,112 @@
 import type { Metadata } from "next";
-import { Check, X } from "lucide-react";
+import { Check, Minus } from "lucide-react";
 import { SectionHeading } from "@/components/site/section-heading";
 import { PricingCard } from "@/components/site/pricing-card";
+import { PlanEstimator } from "@/components/site/plan-estimator";
 import { ComplianceNote } from "@/components/site/compliance-note";
+import { PageHero } from "@/components/site/page-hero";
+import { SiteMotion } from "@/components/site/motion";
 import { getActivePricingPlans } from "@/lib/settings";
 import { formatCents } from "@/lib/money";
 
-// Reads admin-editable pricing plans from the database on every request
-// rather than baking them into the build — also keeps this off Next's
-// static prerender pass, which would otherwise run at build time (before a
-// database may even be reachable, e.g. a fresh Vercel deploy).
+// Reads admin-editable plan copy from the database on every request rather
+// than baking it into the build — also keeps this off Next's static
+// prerender pass (a DB may not be reachable at build time on Vercel).
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Pricing",
+  title: "Pricing — Individual, Business10 & Business30",
   description:
-    "Transparent Michigan notary pricing. Statutory notarial fees are always shown separately from lawful service charges.",
+    "Transparent Michigan notary pricing: pay per appointment, or Business10 ($1,000/mo, 10 notarizations) and Business30 ($3,000/mo, 30 notarizations) with $75 per additional notarization. Statutory fees always itemized.",
+  alternates: { canonical: "/pricing" },
 };
 
-const COMPARISON_ROWS = (plans: Awaited<ReturnType<typeof getActivePricingPlans>>) => [
-  { label: "Statutory notarial fee", values: plans.map((p: any) => `${formatCents(p.statutoryFeeCents, { showCents: false })}/act`) },
-  { label: "Appointments included", values: plans.map((p: any) => (p.appointmentsIncluded ? `${p.appointmentsIncluded}/month` : p.billingPeriod === "monthly" ? "Unlimited*" : "1")) },
-  { label: "Additional appointment rate", values: plans.map((p: any) => (p.overageFeeCents ? formatCents(p.overageFeeCents, { showCents: false }) : "—")) },
-  { label: "In-person appointments", values: plans.map(() => true) },
-  { label: "Remote/online (where eligible)", values: plans.map(() => true) },
-  { label: "Priority scheduling", values: [false, true, true] },
-  { label: "Centralized monthly invoicing", values: [false, true, true] },
-  { label: "Dedicated point of contact", values: [false, true, true] },
-  { label: "Usage dashboard", values: [false, true, true] },
+type Plan = Awaited<ReturnType<typeof getActivePricingPlans>>[number];
+const money = (c: number) => formatCents(c, { showCents: false });
+
+const ROWS: { label: string; value: (p: Plan) => string | boolean }[] = [
+  { label: "Price", value: (p) => `${money(p.totalCents)}${p.billingPeriod === "monthly" ? "/mo" : ""}` },
+  { label: "Notarizations included", value: (p) => (p.billingPeriod === "monthly" ? `${p.appointmentsIncluded}/month` : `${p.actsIncluded} per appointment`) },
+  { label: "Each additional", value: (p) => (p.billingPeriod === "monthly" && p.overageFeeCents ? money(p.overageFeeCents) : `${money(p.statutoryFeeCents)}/act`) },
+  { label: "Statutory fee itemized", value: () => true },
+  { label: "Mobile notary", value: () => true },
+  { label: "Online (eligible documents)", value: () => true },
+  { label: "Monthly invoice", value: (p) => p.billingPeriod === "monthly" },
+  { label: "Portal usage tracking", value: (p) => p.billingPeriod === "monthly" },
 ];
 
 export default async function PricingPage() {
   const plans = await getActivePricingPlans();
-  const rows = COMPARISON_ROWS(plans);
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
-      <SectionHeading
-        eyebrow="Pricing"
-        title="Simple, transparent, Michigan-compliant pricing"
-        description="Every package clearly separates the statutory notarial fee (capped at $10/act under Michigan law) from other lawful, disclosed service charges."
-      />
+    <SiteMotion>
+      <PageHero eyebrow="Pricing" title="Simple pricing." accent="No surprises." subtitle="Pay per appointment, or pick a monthly business plan." />
 
-      <div className="mt-14 grid gap-8 lg:grid-cols-3">
-        {plans.map((plan: any) => (
-          <PricingCard key={plan.key} plan={plan} />
-        ))}
-      </div>
+      <section className="relative z-10 -mt-12 px-4 pb-16 sm:px-6 lg:px-8">
+        <div className="mx-auto grid max-w-6xl gap-6 lg:grid-cols-3 lg:items-stretch">
+          {plans.map((plan) => (
+            <div key={plan.key} data-reveal className={plan.highlight ? "lg:-translate-y-3" : ""}>
+              <PricingCard plan={plan} />
+            </div>
+          ))}
+        </div>
+        <ComplianceNote className="mx-auto mt-10 max-w-3xl" />
+      </section>
 
-      <ComplianceNote className="mt-12 mx-auto max-w-3xl" />
+      <section className="bg-navy-50 py-20">
+        <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 sm:px-6 lg:grid-cols-2 lg:px-8">
+          <div data-reveal>
+            <SectionHeading align="left" eyebrow="Business plans" title="Which plan fits?" description="Slide to your monthly volume. The math does the rest." />
+          </div>
+          <div data-reveal>
+            <PlanEstimator />
+          </div>
+        </div>
+      </section>
 
-      <div className="mt-20">
-        <h2 className="text-center text-2xl font-bold text-navy-900">Compare plans</h2>
-        <div className="mt-8 overflow-x-auto rounded-2xl border border-navy-100">
-          <table className="w-full min-w-[640px] border-collapse text-sm">
+      <section className="mx-auto max-w-6xl px-4 py-20 sm:px-6 lg:px-8">
+        <div data-reveal>
+          <SectionHeading title="Compare plans" />
+        </div>
+        <div data-reveal className="mt-10 overflow-x-auto rounded-2xl border border-navy-100 bg-white">
+          <table className="w-full min-w-[560px] border-collapse text-sm">
             <thead>
               <tr className="bg-navy-50">
-                <th className="px-5 py-4 text-left font-semibold text-navy-500">Feature</th>
-                {plans.map((p: any) => (
-                  <th key={p.key} className="px-5 py-4 text-left font-semibold text-navy-900">
+                <th scope="col" className="px-4 py-4 text-left font-semibold text-navy-500 sm:px-5">&nbsp;</th>
+                {plans.map((p) => (
+                  <th key={p.key} scope="col" className="px-4 py-4 text-left font-bold text-navy-900 sm:px-5">
                     {p.name}
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {rows.map((row, i) => (
+              {ROWS.map((row, i) => (
                 <tr key={row.label} className={i % 2 === 0 ? "bg-white" : "bg-navy-50/50"}>
-                  <td className="px-5 py-4 font-medium text-navy-700">{row.label}</td>
-                  {row.values.map((v: any, idx: any) => (
-                    <td key={idx} className="px-5 py-4">
-                      {typeof v === "boolean" ? (
-                        v ? (
-                          <Check className="h-4 w-4 text-success-600" />
+                  <th scope="row" className="px-4 py-3.5 text-left font-medium text-navy-600 sm:px-5">
+                    {row.label}
+                  </th>
+                  {plans.map((p) => {
+                    const v = row.value(p);
+                    return (
+                      <td key={p.key} className="px-4 py-3.5 sm:px-5">
+                        {typeof v === "boolean" ? (
+                          v ? <Check className="h-4 w-4 text-success-600" aria-label="Included" /> : <Minus className="h-4 w-4 text-navy-300" aria-label="Not included" />
                         ) : (
-                          <X className="h-4 w-4 text-navy-300" />
-                        )
-                      ) : (
-                        <span className="text-navy-700">{v}</span>
-                      )}
-                    </td>
-                  ))}
+                          <span className="font-semibold text-navy-800">{v}</span>
+                        )}
+                      </td>
+                    );
+                  })}
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
         <p className="mt-4 text-xs text-navy-400">
-          *Unlimited plans are subject to fair-use business terms, available on request and editable
-          by Notar-E Services as regulations or business needs evolve.
+          Mobile travel fees are agreed before we travel. Online notarization is available for eligible documents and transactions.
         </p>
-      </div>
-    </div>
+      </section>
+    </SiteMotion>
   );
 }

@@ -48,6 +48,7 @@ export function LinkButton({
   size = "md",
   children,
   target,
+  onClick,
 }: {
   href: string;
   className?: string;
@@ -55,11 +56,13 @@ export function LinkButton({
   size?: Size;
   children: React.ReactNode;
   target?: string;
+  onClick?: React.MouseEventHandler<HTMLAnchorElement>;
 }) {
   return (
     <Link
       href={href}
       target={target}
+      onClick={onClick}
       className={cn(
         "inline-flex items-center justify-center gap-2 rounded-lg font-semibold transition-colors",
         VARIANTS[variant],

@@ -29,28 +29,30 @@ Complete guide for setting up and using Stripe payments in the Notar-E Services 
 - Copy Price ID (format: `price_...`)
 - Add to .env.local as `STRIPE_PRICE_INDIVIDUAL`
 
-#### Product 2: Business 30
+#### Product 2: Business10
 **Settings**:
-- Name: "Business 30"
-- Description: "Monthly notary service - up to 30 appointments"
-- Type: "Monthly recurring subscription"
-- Price: $2,500.00 USD
-- Metadata: `business30_included_appointments: 30`
+- Name: "Business10"
+- Description: "Monthly notary plan — 10 notarizations included, $75 each additional"
+- Type: Recurring, **monthly**
+- Price: **$1,000.00 USD**
 
 **After Creation**:
-- Copy Price ID
-- Add to .env.local as `STRIPE_PRICE_BUSINESS30`
+- Copy Price ID → `STRIPE_PRICE_BUSINESS10`
 
-#### Product 3: Business Unlimited
+#### Product 3: Business30
 **Settings**:
-- Name: "Business Unlimited"
-- Description: "Unlimited monthly notary appointments"
-- Type: "Monthly recurring subscription"
-- Price: $4,000.00 USD
+- Name: "Business30"
+- Description: "Monthly notary plan — 30 notarizations included, $75 each additional"
+- Type: Recurring, **monthly**
+- Price: **$3,000.00 USD** (a NEW price — the old $2,500 price must not be reused)
 
 **After Creation**:
-- Copy Price ID
-- Add to .env.local as `STRIPE_PRICE_BUSINESS_UNLIMITED`
+- Copy Price ID → `STRIPE_PRICE_BUSINESS30`
+
+> Business Unlimited is discontinued. Don't create it. If an old Unlimited price
+> exists, archive it in Stripe; optionally keep its ID in
+> `STRIPE_PRICE_BUSINESS_UNLIMITED` so legacy subscriptions stay recognisable.
+> Full details: `docs/PLANS_AND_BILLING.md`.
 
 ### 3. Generate API Keys
 
@@ -107,8 +109,8 @@ Complete guide for setting up and using Stripe payments in the Notar-E Services 
 // User clicks "Subscribe"
 POST /api/checkout
 {
-  planType: "business30",  // or "individual" or "unlimited"
-  clientId: "client_123",
+  planType: "business10",  // "business10" | "business30" | "individual"
+  businessId: "biz_123",   // for business plans (admin or owner/admin portal user)
   appointmentId: "apt_456" // for individual
 }
 
@@ -152,20 +154,16 @@ POST /api/checkout
 
 ### Subscription Management
 
-**Business 30 Overage Logic**:
+**Business10 / Business30 Overage Logic** (see `src/lib/plans.ts`):
 ```
-Monthly Usage Counter = X
+Usage = notarial acts on completed appointments in the Stripe billing month
+Included: Business10 = 10, Business30 = 30
+Each notarization beyond the included amount = $75
+  Business10: 11 → $1,075 · 15 → $1,375 · 20 → $1,750
+  Business30: 31 → $3,075 · 35 → $3,375 · 40 → $3,750
 
-if X <= 30:
-  - No additional charge
-  - All included in $2,500
-
-if X > 30:
-  - Additional 1 appointment = $50
-  - Additional 2 appointments = $100
-  - etc.
-
-Invoice generated at end of month for overage
+Overage is recorded per appointment (BusinessUsage) and billed on a
+draft invoice created from Admin → Businesses → Subscription & Usage.
 ```
 
 ## 🧪 Testing Workflow

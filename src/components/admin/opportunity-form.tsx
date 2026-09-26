@@ -16,7 +16,7 @@ export function OpportunityForm({ opportunityId, initial }: { opportunityId?: st
   const [contactName, setContactName] = useState(initial?.contactName ?? "");
   const [category, setCategory] = useState(initial?.category ?? "other");
   const [stage, setStage] = useState(initial?.stage ?? "new_lead");
-  const [potentialMonthly, setPotentialMonthly] = useState(initial?.potentialMonthlyDollars ?? 2500);
+  const [potentialMonthly, setPotentialMonthly] = useState(initial?.potentialMonthlyDollars ?? 1000);
   const [dealValue, setDealValue] = useState(initial?.dealValueDollars ?? 30000);
   const [probability, setProbability] = useState(initial?.probability ?? 20);
   const [nextAction, setNextAction] = useState(initial?.nextAction ?? "");

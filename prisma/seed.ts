@@ -98,10 +98,10 @@ async function main() {
   // --- Demo Businesses ---
   const businesses = await Promise.all(
     [
-      { companyName: "Metro Title Group", category: "title_company", contactName: "Rebecca Long", email: "rebecca@metrotitlegroup.example", phone: "(313) 555-0200", billingContactName: "Accounts Payable", billingContactEmail: "ap@metrotitlegroup.example", packageKey: "business20", monthlyUsage: 14, monthlyRevenueCents: 250000, expectedMonthlyVolume: 18, status: "active" },
-      { companyName: "Great Lakes Mortgage Co.", category: "mortgage_company", contactName: "Tom Ferraro", email: "tferraro@glmortgage.example", phone: "(248) 555-0221", billingContactName: "Tom Ferraro", billingContactEmail: "tferraro@glmortgage.example", packageKey: "unlimited", monthlyUsage: 31, monthlyRevenueCents: 400000, expectedMonthlyVolume: 30, status: "active" },
+      { companyName: "Metro Title Group", category: "title_company", contactName: "Rebecca Long", email: "rebecca@metrotitlegroup.example", phone: "(313) 555-0200", billingContactName: "Accounts Payable", billingContactEmail: "ap@metrotitlegroup.example", packageKey: "business30", monthlyUsage: 14, monthlyRevenueCents: 300000, expectedMonthlyVolume: 18, status: "active" },
+      { companyName: "Great Lakes Mortgage Co.", category: "mortgage_company", contactName: "Tom Ferraro", email: "tferraro@glmortgage.example", phone: "(248) 555-0221", billingContactName: "Tom Ferraro", billingContactEmail: "tferraro@glmortgage.example", packageKey: "business30", monthlyUsage: 31, monthlyRevenueCents: 307500, expectedMonthlyVolume: 30, status: "active" },
       { companyName: "Dearborn Family Dentistry", category: "healthcare", contactName: "Dr. Nadia Youssef", email: "office@dearbornfamilydental.example", phone: "(313) 555-0255", billingContactName: "", billingContactEmail: "", packageKey: "", monthlyUsage: 0, monthlyRevenueCents: 0, expectedMonthlyVolume: 5, status: "lead" },
-      { companyName: "Prestige Auto Group", category: "dealership", contactName: "Mike Robertson", email: "mrobertson@prestigeauto.example", phone: "(586) 555-0266", billingContactName: "Prestige Accounting", billingContactEmail: "billing@prestigeauto.example", packageKey: "business20", monthlyUsage: 9, monthlyRevenueCents: 250000, expectedMonthlyVolume: 12, status: "active" },
+      { companyName: "Prestige Auto Group", category: "dealership", contactName: "Mike Robertson", email: "mrobertson@prestigeauto.example", phone: "(586) 555-0266", billingContactName: "Prestige Accounting", billingContactEmail: "billing@prestigeauto.example", packageKey: "business10", monthlyUsage: 9, monthlyRevenueCents: 100000, expectedMonthlyVolume: 12, status: "active" },
       { companyName: "Somerset Senior Living", category: "senior_living", contactName: "Patricia Nowak", email: "pnowak@somersetsl.example", phone: "(248) 555-0288", billingContactName: "", billingContactEmail: "", packageKey: "", monthlyUsage: 0, monthlyRevenueCents: 0, expectedMonthlyVolume: 8, status: "lead" },
     ].map((b) =>
       prisma.business.create({
@@ -259,7 +259,7 @@ async function main() {
       { businessName: "Community First Credit Union", contactName: "Yasmin Farah", category: "bank_credit_union", stage: "won", potentialMonthlyCents: 250000, dealValueCents: 3000000, probability: 100, contactAttempts: 4, expectedCloseDate: daysAgo(4), sortOrder: 1 },
       { businessName: "Value Rental Cars", contactName: "Pete Simmons", category: "small_business", stage: "lost", potentialMonthlyCents: 25000, dealValueCents: 300000, probability: 0, lostReason: "Went with a competitor offering a lower flat rate", contactAttempts: 3, expectedCloseDate: daysAgo(10), sortOrder: 1 },
       { businessName: "Ford Field Corporate Services", contactName: "Marcus Webb", category: "small_business", stage: "follow_up", potentialMonthlyCents: 250000, dealValueCents: 3000000, probability: 20, nextAction: "Check back after their budget cycle", nextFollowUpDate: daysFromNow(6), contactAttempts: 2, expectedCloseDate: daysFromNow(30), sortOrder: 1 },
-      { businessName: "Birmingham Bloomfield Realty", contactName: "Lisa Chen", category: "real_estate_brokerage", stage: "interested", potentialMonthlyCents: 250000, dealValueCents: 3000000, probability: 35, nextAction: "Send Business 20 plan details", nextFollowUpDate: daysFromNow(4), contactAttempts: 2, expectedCloseDate: daysFromNow(20), sortOrder: 1 },
+      { businessName: "Birmingham Bloomfield Realty", contactName: "Lisa Chen", category: "real_estate_brokerage", stage: "interested", potentialMonthlyCents: 100000, dealValueCents: 1200000, probability: 35, nextAction: "Send Business10 / Business30 plan details", nextFollowUpDate: daysFromNow(4), contactAttempts: 2, expectedCloseDate: daysFromNow(20), sortOrder: 1 },
     ].map((p) => ({ ...p, isDemo: true })),
   });
 
@@ -392,7 +392,7 @@ async function main() {
   await prisma.leadCapture.createMany({
     data: [
       { name: "Kevin Brooks", company: "", email: "kbrooks@example.com", phone: "(313) 555-0410", serviceNeeded: "Power of Attorney", message: "Need a POA notarized this week.", isBusinessLead: false },
-      { name: "Lauren Kim", company: "Kim & Associates Realty", email: "lkim@kimrealty.example", phone: "(248) 555-0455", serviceNeeded: "Recurring business service", message: "Interested in the Business 20 plan for our closings.", estimatedAppointmentsPerMonth: "15-20", isBusinessLead: true },
+      { name: "Lauren Kim", company: "Kim & Associates Realty", email: "lkim@kimrealty.example", phone: "(248) 555-0455", serviceNeeded: "Recurring business service", message: "Interested in Business10 or Business30 for our closings.", estimatedAppointmentsPerMonth: "15-20", isBusinessLead: true },
     ],
   });
 

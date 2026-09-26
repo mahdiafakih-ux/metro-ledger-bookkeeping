@@ -1,4 +1,11 @@
 import Stripe from "stripe";
+import {
+  LEGACY_PLANS,
+  SUBSCRIPTION_PLANS,
+  SUBSCRIPTION_PLAN_LIST,
+  type LegacyPlanKey,
+  type SubscriptionPlanKey,
+} from "@/lib/plans";
 
 let stripeClient: Stripe | null = null;
 let attempted = false;
@@ -27,20 +34,48 @@ export function getSiteUrl() {
 }
 
 /**
- * Get all configured Stripe Price IDs
+ * Stripe Price IDs, read from env vars named in the plan catalog.
+ * Never invent or hard-code a Price ID — an empty string means "not
+ * configured", and checkout for that plan is refused with a clear error.
  */
+export function getSubscriptionPriceId(planKey: SubscriptionPlanKey): string {
+  return (process.env[SUBSCRIPTION_PLANS[planKey].stripePriceEnv] || "").trim();
+}
+
 export function getStripePriceIds() {
   return {
-    individual: process.env.STRIPE_PRICE_INDIVIDUAL || "",
-    business30: process.env.STRIPE_PRICE_BUSINESS30 || "",
-    unlimited: process.env.STRIPE_PRICE_BUSINESS_UNLIMITED || "",
+    individual: (process.env.STRIPE_PRICE_INDIVIDUAL || "").trim(),
+    business10: getSubscriptionPriceId("business10"),
+    business30: getSubscriptionPriceId("business30"),
   };
 }
 
-/**
- * Validate that all required Stripe Price IDs are configured
- */
+/** Which env-configured prices are still missing (for admin warnings). */
+export function missingStripePriceEnvVars(): string[] {
+  const missing: string[] = [];
+  if (!process.env.STRIPE_PRICE_INDIVIDUAL) missing.push("STRIPE_PRICE_INDIVIDUAL");
+  for (const plan of SUBSCRIPTION_PLAN_LIST) {
+    if (!process.env[plan.stripePriceEnv]) missing.push(plan.stripePriceEnv);
+  }
+  return missing;
+}
+
 export function areStripePricesConfigured() {
-  const prices = getStripePriceIds();
-  return prices.individual && prices.business30 && prices.unlimited;
+  return missingStripePriceEnvVars().length === 0;
+}
+
+/**
+ * Map a Stripe Price ID back to our plan key. Used by webhooks so a plan
+ * change made anywhere (our portal, the Stripe Billing Portal, or the Stripe
+ * Dashboard) always updates `currentPlanKey` correctly. Recognises the
+ * discontinued Unlimited price only so legacy subscribers keep displaying.
+ */
+export function planKeyFromPriceId(priceId: string | null | undefined): SubscriptionPlanKey | LegacyPlanKey | null {
+  if (!priceId) return null;
+  for (const plan of SUBSCRIPTION_PLAN_LIST) {
+    if (getSubscriptionPriceId(plan.key) === priceId) return plan.key;
+  }
+  const legacy = (process.env[LEGACY_PLANS.unlimited.stripePriceEnv] || "").trim();
+  if (legacy && legacy === priceId) return "unlimited";
+  return null;
 }

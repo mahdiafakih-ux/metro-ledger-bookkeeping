@@ -27,9 +27,27 @@ export type SessionPayload = {
   name: string;
 };
 
+/**
+ * Admin and client-portal sessions are signed with the same AUTH_SECRET, so
+ * every token carries an audience and every check verifies it. Without this
+ * a portal (client) token pasted into the admin cookie would pass as admin.
+ */
+export const ADMIN_TOKEN_AUDIENCE = "notare:admin";
+
+/** True if a verified JWT payload is an admin session (new or pre-audience token). */
+export function isAdminTokenPayload(payload: Record<string, unknown>): boolean {
+  if ("clientId" in payload) return false; // client-portal token — never admin
+  if (typeof payload.userId !== "string" || !payload.userId) return false;
+  const aud = payload.aud;
+  // Tokens issued before audiences were added have no `aud`; accept those
+  // only in the admin shape checked above so existing admin logins survive.
+  return aud === undefined || aud === ADMIN_TOKEN_AUDIENCE || (Array.isArray(aud) && aud.includes(ADMIN_TOKEN_AUDIENCE));
+}
+
 export async function createSessionToken(payload: SessionPayload) {
   return new SignJWT({ ...payload })
     .setProtectedHeader({ alg: "HS256" })
+    .setAudience(ADMIN_TOKEN_AUDIENCE)
     .setIssuedAt()
     .setExpirationTime(`${SESSION_DURATION_SECONDS}s`)
     .sign(getSecretKey());
@@ -38,6 +56,7 @@ export async function createSessionToken(payload: SessionPayload) {
 export async function verifySessionToken(token: string): Promise<SessionPayload | null> {
   try {
     const { payload } = await jwtVerify(token, getSecretKey());
+    if (!isAdminTokenPayload(payload as Record<string, unknown>)) return null;
     return payload as unknown as SessionPayload;
   } catch {
     return null;

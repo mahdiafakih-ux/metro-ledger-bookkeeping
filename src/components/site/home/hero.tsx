@@ -1,4 +1,4 @@
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, MapPin, ShieldCheck, Video } from "lucide-react";
 import { LinkButton } from "@/components/ui/button";
 import { NotareIcon } from "@/components/brand/logo";
 import { HeroBackground } from "./hero-background";
@@ -62,29 +62,38 @@ export function HomeHero({
             >
               <span data-magnetic className="inline-block w-full sm:w-auto">
                 <LinkButton
-                  href="/book"
+                  href="/book?type=in_person"
                   size="lg"
                   className="btn-spot group relative w-full overflow-hidden shadow-lg shadow-accent-500/30 sm:w-auto"
                 >
                   <span data-magnetic-inner className="relative z-10 inline-flex items-center gap-2">
-                    Book an Appointment <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5" />
+                    Book a Notary <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5" />
                   </span>
                   <span data-sheen aria-hidden className="btn-sheen" />
                 </LinkButton>
               </span>
               <span data-magnetic className="inline-block w-full sm:w-auto">
                 <LinkButton
-                  href="/business-solutions"
+                  href="/book?type=remote"
                   variant="outline"
                   size="lg"
                   className="btn-spot relative w-full overflow-hidden border-white/20 text-white backdrop-blur-sm hover:bg-white/10 sm:w-auto"
                 >
                   <span data-magnetic-inner className="relative z-10 inline-flex items-center gap-2">
-                    Business Solutions
+                    <Video className="h-4 w-4" /> Notarize Online
                   </span>
                 </LinkButton>
               </span>
             </div>
+
+            <ul
+              data-hero-item="chips"
+              className="mt-8 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs font-medium text-navy-300 lg:justify-start"
+            >
+              <li className="inline-flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5 text-accent-400" /> We come to you</li>
+              <li className="inline-flex items-center gap-1.5"><Video className="h-3.5 w-3.5 text-accent-400" /> Online for eligible documents</li>
+              <li className="inline-flex items-center gap-1.5"><ShieldCheck className="h-3.5 w-3.5 text-accent-400" /> Michigan-commissioned</li>
+            </ul>
           </div>
         </div>
 

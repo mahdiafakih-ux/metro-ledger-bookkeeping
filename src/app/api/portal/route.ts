@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isStripeConfigured, getStripeClient } from "@/lib/stripe";
+import { isStripeConfigured } from "@/lib/stripe";
+import { authorizeBusinessManager } from "@/lib/business-auth";
 import { getStripePortalUrl } from "@/lib/subscriptions";
 import { requireClientSession } from "@/lib/client-auth";
 import { prisma } from "@/lib/db";
@@ -20,6 +21,22 @@ export async function POST(request: NextRequest) {
         { error: "Unauthorized" },
         { status: 401 }
       );
+    }
+
+    // Business billing: the Stripe customer belongs to the business. Only a
+    // linked owner/admin may open it; the customer ID comes from the DB.
+    const body = await request.json().catch(() => ({}));
+    const businessId = typeof body?.businessId === "string" ? body.businessId : "";
+    if (businessId) {
+      const auth = await authorizeBusinessManager(businessId);
+      if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+      const business = await prisma.business.findUnique({ where: { id: businessId }, select: { stripeCustomerId: true } });
+      if (!business?.stripeCustomerId) {
+        return NextResponse.json({ error: "No billing account yet — start a plan first." }, { status: 400 });
+      }
+      const url = await getStripePortalUrl(business.stripeCustomerId);
+      if (!url) return NextResponse.json({ error: "Failed to create portal session" }, { status: 500 });
+      return NextResponse.json({ portalUrl: url });
     }
 
     // SECURITY: Derive stripeCustomerId from database using session clientId

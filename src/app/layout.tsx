@@ -19,26 +19,24 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "Notar-E Services | Michigan Notary Public",
+    default: "Notar-E Services | Mobile & Online Notary in Michigan",
     template: "%s | Notar-E Services",
   },
   description:
-    "Fast, professional mobile and online notary services across Metro Detroit and Southeast Michigan. Book a Michigan-commissioned notary in minutes — for individuals, real estate, title, and law firms.",
+    "Mobile notary services and remote online notarization (eligible documents) across Metro Detroit and Southeast Michigan. Business notary plans for title, lending, legal and real estate teams.",
   keywords: [
-    "Michigan Notary",
-    "Mobile Notary Michigan",
-    "Notary Services Michigan",
-    "Online Notary Michigan",
-    "Dearborn Notary",
-    "Metro Detroit Notary",
-    "Business Notary Services",
-    "Notary for Title Companies",
-    "Notary for Real Estate",
+    "Michigan notary services",
+    "mobile notary Michigan",
+    "remote online notarization Michigan",
+    "online notary Michigan",
+    "business notary services",
+    "Metro Detroit notary",
+    "Dearborn notary",
   ],
   openGraph: {
-    title: "Notar-E Services | Michigan Notary Public",
+    title: "Notar-E Services | Mobile & Online Notary in Michigan",
     description:
-      "Fast, professional mobile and online notary services across Metro Detroit and Southeast Michigan.",
+      "Mobile notary and remote online notarization for eligible documents, plus business plans — across Metro Detroit and Southeast Michigan.",
     url: siteUrl,
     siteName: "Notar-E Services",
     locale: "en_US",
@@ -46,9 +44,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Notar-E Services | Michigan Notary Public",
+    title: "Notar-E Services | Mobile & Online Notary in Michigan",
     description:
-      "Fast, professional mobile and online notary services across Metro Detroit and Southeast Michigan.",
+      "Mobile notary and remote online notarization for eligible documents, plus business plans — across Southeast Michigan.",
   },
   robots: { index: true, follow: true },
 };

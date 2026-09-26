@@ -11,12 +11,17 @@ type Client = {
   stripeCustomerId: string;
 };
 
-export function BillingClient({ client }: { client: Client }) {
+/**
+ * Opens the Stripe Billing Portal (payment methods, invoices, cancellation).
+ * Pass `businessId` for a business subscription; the server resolves the
+ * Stripe customer from the database and checks the caller's role.
+ */
+export function BillingClient({ client, businessId, label = "Manage Billing" }: { client?: Client; businessId?: string; label?: string }) {
   const [loading, setLoading] = useState(false);
 
   async function openStripePortal() {
-    if (!client.stripeCustomerId) {
-      toast.error("Stripe customer ID not found");
+    if (!businessId && !client?.stripeCustomerId) {
+      toast.error("No billing account found");
       return;
     }
 
@@ -25,7 +30,7 @@ export function BillingClient({ client }: { client: Client }) {
       const res = await fetch("/api/portal", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ customerId: client.stripeCustomerId }),
+        body: JSON.stringify(businessId ? { businessId } : {}),
       });
 
       const data = await res.json();
@@ -49,18 +54,16 @@ export function BillingClient({ client }: { client: Client }) {
   return (
     <Card>
       <CardBody>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h3 className="font-semibold text-navy-900">Payment Method & Subscription</h3>
-            <p className="text-sm text-navy-600 mt-1">
-              Manage your payment method, billing address, and subscription settings in the Stripe portal
-            </p>
+            <h3 className="font-semibold text-navy-900">Payment method, receipts &amp; cancellation</h3>
+            <p className="text-sm text-navy-600 mt-1">Opens Stripe&apos;s secure billing portal.</p>
           </div>
           <Button onClick={openStripePortal} disabled={loading}>
             {loading ? (
               <Loader2 className="h-4 w-4 animate-spin mr-2" />
             ) : null}
-            Manage Billing
+            {label}
           </Button>
         </div>
       </CardBody>

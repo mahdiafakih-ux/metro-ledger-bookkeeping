@@ -6,6 +6,16 @@ import { generateConfirmationNumber } from "@/lib/utils";
 import { createNotification } from "@/lib/actions/notifications";
 import { requireAdminSession } from "@/lib/auth";
 import { syncRevenueForAppointment } from "@/lib/payments";
+import { syncBusinessUsageForAppointment } from "@/lib/subscriptions";
+
+/** Usage metering must never block saving an appointment; log and move on. */
+async function syncUsage(id: string) {
+  try {
+    await syncBusinessUsageForAppointment(id);
+  } catch (error) {
+    console.error("Business usage sync failed for appointment", id, error instanceof Error ? error.message : error);
+  }
+}
 
 export interface AppointmentInput {
   type: string;
@@ -74,6 +84,7 @@ export async function createAppointment(input: AppointmentInput) {
   });
 
   await syncRevenueForAppointment(appointment.id);
+  await syncUsage(appointment.id);
   await createNotification({
     type: "appointment_upcoming",
     title: "Appointment scheduled",
@@ -129,6 +140,7 @@ export async function updateAppointment(id: string, input: AppointmentInput) {
   });
 
   await syncRevenueForAppointment(id);
+  await syncUsage(id);
 
   if (timeChanged && input.email) {
     const { sendAppointmentChangedEmail } = await import("@/lib/email");
@@ -157,6 +169,7 @@ export async function setAppointmentStatus(id: string, status: string) {
   const before = await prisma.appointment.findUnique({ where: { id } });
   await prisma.appointment.update({ where: { id }, data: { status } });
   await syncRevenueForAppointment(id);
+  await syncUsage(id);
 
   if (before && status === "cancelled" && before.status !== "cancelled" && before.email) {
     const { sendAppointmentCancelledEmail } = await import("@/lib/email");
@@ -197,6 +210,7 @@ export async function deleteAppointment(id: string) {
   const existingEntry = await prisma.revenueEntry.findFirst({ where: { appointmentId: id } });
   if (existingEntry) await prisma.revenueEntry.delete({ where: { id: existingEntry.id } });
   await prisma.appointment.delete({ where: { id } });
+  await syncUsage(id); // drops the (not-yet-invoiced) usage record and recomputes overage
   revalidatePath("/admin/appointments");
   revalidatePath("/admin/calendar");
   revalidatePath("/admin");

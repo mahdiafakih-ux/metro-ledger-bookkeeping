@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { getClientSession } from "@/lib/client-auth";
-import { getBusinessSettings } from "@/lib/settings";
+import { getPortalBusinesses } from "@/lib/portal-billing";
+import { getSubscriptionPlan } from "@/lib/plans";
 import { formatCents } from "@/lib/money";
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,7 @@ export default async function PortalDashboard() {
       invoices: {
         orderBy: { issueDate: "desc" },
         take: 5,
+        include: { items: true },
       },
     },
   });
@@ -36,45 +38,29 @@ export default async function PortalDashboard() {
     return <div>Client not found</div>;
   }
 
-  const settings = await getBusinessSettings();
-  const isPaid = client.amountOwedCents === 0;
+  const businesses = await getPortalBusinesses(client.id);
+  const individual = await prisma.pricingPlan.findUnique({ where: { key: "individual" } });
+  const primary = businesses.find((b) => b.hasActiveSubscription) ?? null;
 
-  // Determine plan type
   let planDisplay = {
     name: "Pay Per Appointment",
-    price: "$125",
+    price: individual ? formatCents(individual.totalCents, { showCents: false }) : "",
     period: "per appointment",
     details: [] as string[],
-    showUsage: false,
   };
-
-  if (client.currentPlanKey === "business30") {
-    const includedAppointments = settings.business30IncludedAppointments;
-    const overageCount = Math.max(0, client.monthlyUsageCount - includedAppointments);
-    const details: string[] = [
-      `Monthly Usage: ${client.monthlyUsageCount} / ${includedAppointments} appointments`,
-      `Remaining: ${Math.max(0, includedAppointments - client.monthlyUsageCount)}`,
-    ];
-    if (overageCount > 0) details.push(`Overage Appointments: ${overageCount} × $50`);
-    if (client.nextBillingDate) details.push(`Next Billing: ${new Date(client.nextBillingDate).toLocaleDateString()}`);
-
+  if (primary) {
+    const sub = getSubscriptionPlan(primary.planKey);
+    const details: string[] = [primary.companyName];
+    if (primary.usage) {
+      details.push(`${primary.usage.used} / ${primary.usage.included} notarizations used this month`);
+      if (primary.usage.overageUnits > 0) details.push(`${primary.usage.overageUnits} additional × $75`);
+    }
+    if (primary.nextBillingDate) details.push(`Next billing: ${new Date(primary.nextBillingDate).toLocaleDateString()}`);
     planDisplay = {
-      name: "Business 30",
-      price: "$2,500",
-      period: "per month",
+      name: primary.planName,
+      price: sub ? formatCents(sub.monthlyCents, { showCents: false }) : "—",
+      period: sub ? "per month" : "",
       details,
-      showUsage: true,
-    };
-  } else if (client.currentPlanKey === "unlimited") {
-    planDisplay = {
-      name: "Business Unlimited",
-      price: "$4,000",
-      period: "per month",
-      details: [
-        "Unlimited appointments",
-        client.nextBillingDate ? `Next Billing: ${new Date(client.nextBillingDate).toLocaleDateString()}` : "",
-      ].filter(Boolean) as string[],
-      showUsage: false,
     };
   }
 
@@ -122,8 +108,8 @@ export default async function PortalDashboard() {
             </div>
             <div>
               <p className="text-sm text-navy-600">Status</p>
-              <p className="text-lg font-semibold text-success-600">
-                {client.subscriptionStatus || "Active"}
+              <p className="text-lg font-semibold capitalize text-success-600">
+                {primary?.subscriptionStatus || "Active"}
               </p>
             </div>
             {planDisplay.details.map((detail, idx) => (
@@ -131,7 +117,7 @@ export default async function PortalDashboard() {
                 <p className="text-sm text-navy-700">{detail}</p>
               </div>
             ))}
-            {client.currentPlanKey !== "individual" && (
+            {(primary || businesses.length > 0) && (
               <div className="sm:col-span-2">
                 <Link href="/portal/billing">
                   <Button className="w-full" variant="outline">

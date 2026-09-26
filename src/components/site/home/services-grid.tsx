@@ -17,7 +17,7 @@ export function ServicesGrid() {
       <div data-services-grid-bg aria-hidden className="light-grid pointer-events-none absolute inset-0" />
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div data-reveal>
-          <SectionHeading eyebrow="What We Notarize" title="Document categories we handle every day" />
+          <SectionHeading eyebrow="What we notarize" title="Everyday documents. Handled right." />
         </div>
         <div data-card3d-grid className="mt-16 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6 lg:gap-5">
           {SERVICE_CATEGORIES.map((c) => (

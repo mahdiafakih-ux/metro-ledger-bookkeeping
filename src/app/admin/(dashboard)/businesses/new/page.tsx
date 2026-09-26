@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db";
 import { BusinessForm } from "@/components/admin/business-form";
 
 export default async function NewBusinessPage() {
-  const plans = await prisma.pricingPlan.findMany({ where: { billingPeriod: "monthly" }, select: { key: true, name: true } });
+  const plans = await prisma.pricingPlan.findMany({ where: { billingPeriod: "monthly", isActive: true }, orderBy: { sortOrder: "asc" }, select: { key: true, name: true } });
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <div>

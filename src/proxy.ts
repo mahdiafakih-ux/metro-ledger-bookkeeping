@@ -9,8 +9,13 @@ async function isValidSession(token: string | undefined) {
   const secret = process.env.AUTH_SECRET;
   if (!secret) return false;
   try {
-    await jwtVerify(token, new TextEncoder().encode(secret));
-    return true;
+    const { payload } = await jwtVerify(token, new TextEncoder().encode(secret));
+    // Must be an admin token — a client-portal token signed with the same
+    // secret is rejected (mirrors isAdminTokenPayload in lib/auth.ts, which
+    // can't be imported here because it pulls in server-only modules).
+    if ("clientId" in payload || typeof payload.userId !== "string") return false;
+    const aud = payload.aud;
+    return aud === undefined || aud === "notare:admin" || (Array.isArray(aud) && aud.includes("notare:admin"));
   } catch {
     return false;
   }

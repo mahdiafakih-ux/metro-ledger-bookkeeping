@@ -1,5 +1,6 @@
 import { prisma } from "./db";
 import { cache } from "react";
+import { STATUTORY_FEE_PER_ACT_CENTS, feeBreakdown, getSubscriptionPlan } from "./plans";
 
 // A pure read, deliberately never a mutation: this is called from public
 // pages that Next.js can attempt to statically prerender at build time
@@ -20,12 +21,40 @@ export const getBusinessSettings = cache(async () => {
   return settings;
 });
 
+/**
+ * Plans shown publicly. Discontinued plans (Business Unlimited, the original
+ * Business 20) are never returned, even if a row were re-activated. For
+ * Business10/Business30 the numbers are taken from the plan catalog — the
+ * same source Stripe checkout and overage billing use — so the website can't
+ * drift from what customers are actually charged.
+ */
 export const getActivePricingPlans = cache(async () => {
   const plans = await prisma.pricingPlan.findMany({
-    where: { isActive: true },
+    where: { isActive: true, key: { notIn: ["unlimited", "business20"] } },
     orderBy: { sortOrder: "asc" },
   });
-  return plans.map((p: any) => ({ ...p, features: JSON.parse(p.features) as string[] }));
+  return plans.map((p) => {
+    let features: string[] = [];
+    try {
+      features = JSON.parse(p.features) as string[];
+    } catch {
+      features = [];
+    }
+    const sub = getSubscriptionPlan(p.key);
+    if (!sub) return { ...p, features };
+    const b = feeBreakdown(sub);
+    return {
+      ...p,
+      features,
+      billingPeriod: "monthly",
+      statutoryFeeCents: STATUTORY_FEE_PER_ACT_CENTS,
+      actsIncluded: sub.includedNotarizations,
+      serviceFeeCents: b.serviceCents,
+      totalCents: sub.monthlyCents,
+      appointmentsIncluded: sub.includedNotarizations,
+      overageFeeCents: sub.overagePerNotarizationCents,
+    };
+  });
 });
 
 export const getAvailability = cache(async () => {

@@ -64,7 +64,7 @@ function emailLayout(preheader: string, bodyHtml: string) {
               <td style="padding:20px 32px; background-color:#f4f6fc; border-top:1px solid #e3e7f4;">
                 <p style="margin:0; font-size:11px; line-height:1.6; color:#94a1c4;">
                   Notar-E Services is not a law firm and does not provide legal advice. Statutory
-                  notarial fees are limited to $10 per notarial act under Michigan law (MCL 55.287);
+                  notarial fees are limited to $10 per notarial act under Michigan law (MCL 55.285);
                   any other charges are for separately-disclosed, lawful business services.
                 </p>
               </td>
@@ -342,4 +342,42 @@ export async function sendLoginCodeEmail(input: { to: string; name: string; code
     `${heading("Your Access Code")}\n     ${paragraph(`Hi ${escapeHtml(input.name)}, here is your 6-digit access code:`)}\n     ${detailsBox([["Access Code", `<strong style="font-size: 24px; font-family: monospace; letter-spacing: 2px;">${input.code}</strong>`]])}\n     ${paragraph("This code expires in 15 minutes. If you didn't request this code, you can ignore this email.")}\n     ${button(`${siteUrl()}/portal/login`, "Go to Portal")}`
   );
   return send(input.to, "Your Notar-E Portal Access Code", html);
+}
+
+export async function sendCareerApplicationNotificationEmail(input: {
+  applicationId: string;
+  name: string;
+  email: string;
+  phone: string;
+  location: string;
+  role: string;
+  commissioned: boolean;
+}) {
+  const ownerEmail = process.env.BOOKING_NOTIFICATION_EMAIL;
+  if (!ownerEmail) return { success: true, skipped: true } as const;
+  // Deliberately no resume attachment or free-text message — the full
+  // application stays behind admin login.
+  const html = emailLayout(
+    `New career application from ${escapeHtml(input.name)}`,
+    `${heading("New Career Application")}
+     ${detailsBox([
+       ["Name", escapeHtml(input.name)],
+       ["Role", escapeHtml(input.role)],
+       ["Location", escapeHtml(input.location)],
+       ["Commissioned notary", input.commissioned ? "Yes" : "No"],
+       ["Email", escapeHtml(input.email)],
+       ["Phone", escapeHtml(input.phone)],
+     ])}
+     ${button(`${siteUrl()}/admin/careers/${input.applicationId}`, "Review in Command Center")}`
+  );
+  return send(ownerEmail, `New Application — ${input.name} (${input.role})`, html);
+}
+
+export async function sendCareerApplicationReceivedEmail(input: { to: string; firstName: string }) {
+  const html = emailLayout(
+    `Thanks for your interest in Notar-E Services`,
+    `${heading("Application received")}
+     ${paragraph(`Hi ${escapeHtml(input.firstName)}, thanks for your interest in joining the Notar-E network. We review every application and will reach out if there's a fit.`)}`
+  );
+  return send(input.to, "We received your application — Notar-E Services", html);
 }
