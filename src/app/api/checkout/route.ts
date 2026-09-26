@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getStripeClient, isStripeConfigured } from "@/lib/stripe";
-import {
-  createIndividualCheckoutSession,
-  createBusiness30CheckoutSession,
-  createUnlimitedCheckoutSession,
-} from "@/lib/subscriptions";
+import { getSubscriptionPriceId, isStripeConfigured } from "@/lib/stripe";
+import { createIndividualCheckoutSession, createBusinessSubscriptionCheckoutSession } from "@/lib/subscriptions";
 import { prisma } from "@/lib/db";
-import { requireAdminSession } from "@/lib/auth";
 import { requireClientSession } from "@/lib/client-auth";
+import { authorizeBusinessManager } from "@/lib/business-auth";
+import { SUBSCRIPTION_PLANS, isSubscriptionPlanKey } from "@/lib/plans";
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,8 +15,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body = await request.json();
-    const { planType, appointmentId } = body;
+    const body = await request.json().catch(() => ({}));
+    const planType: unknown = body?.planType;
+    const appointmentId: unknown = body?.appointmentId;
 
     if (planType === "individual") {
       // Individual service appointment payment
@@ -32,7 +30,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      if (!appointmentId) {
+      if (typeof appointmentId !== "string" || !appointmentId) {
         return NextResponse.json(
           { error: "Missing appointmentId" },
           { status: 400 }
@@ -143,105 +141,64 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    if (planType === "business30" || planType === "unlimited") {
-      // Business subscription - allow:
-      // 1. Admin users (can manage any business)
-      // 2. Authorized business clients with owner or admin role
+    if (planType === "unlimited") {
+      // Business Unlimited is discontinued. Existing subscriptions keep
+      // working (webhooks still recognise them); new purchases are refused.
+      return NextResponse.json(
+        { error: "Business Unlimited is no longer available. Choose Business10 or Business30." },
+        { status: 410 }
+      );
+    }
 
-      const adminSession = await requireAdminSession();
-      const clientSession = adminSession ? null : await requireClientSession();
-
-      if (!adminSession && !clientSession) {
-        return NextResponse.json(
-          { error: "Unauthorized: Admin or business client access required" },
-          { status: 401 }
-        );
-      }
-
-      const { businessId } = body;
+    if (isSubscriptionPlanKey(planType)) {
+      const businessId = typeof body.businessId === "string" ? body.businessId : "";
       if (!businessId) {
+        return NextResponse.json({ error: "Missing businessId" }, { status: 400 });
+      }
+
+      // SECURITY: admin, or a portal client with owner/admin role on this business.
+      const auth = await authorizeBusinessManager(businessId);
+      if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+
+      if (!getSubscriptionPriceId(planType)) {
         return NextResponse.json(
-          { error: "Missing businessId" },
-          { status: 400 }
+          { error: `${SUBSCRIPTION_PLANS[planType].name} isn't available for online checkout yet (Stripe price not configured).` },
+          { status: 503 }
         );
       }
 
-      const business = await prisma.business.findUnique({
-        where: { id: businessId },
+      const business = await prisma.business.findUnique({ where: { id: businessId } });
+      if (!business) return NextResponse.json({ error: "Business not found" }, { status: 404 });
+
+      // One live subscription per business: switching plans goes through
+      // /api/subscription/change so Stripe prorates instead of double-billing.
+      if (business.stripeSubscriptionId && ["active", "past_due", "incomplete"].includes(business.subscriptionStatus)) {
+        return NextResponse.json(
+          { error: "This business already has an active subscription. Use Change Plan instead." },
+          { status: 409 }
+        );
+      }
+
+      const session = await createBusinessSubscriptionCheckoutSession({
+        planKey: planType,
+        businessId,
+        businessEmail: business.billingContactEmail || business.email,
+        businessName: business.companyName,
+        existingCustomerId: business.stripeCustomerId || undefined,
       });
-
-      if (!business) {
-        return NextResponse.json(
-          { error: "Business not found" },
-          { status: 404 }
-        );
+      if (!session) {
+        return NextResponse.json({ error: "Failed to create checkout session" }, { status: 500 });
       }
 
-      // SECURITY: If client session (not admin), verify authorization via BusinessClient
-      if (clientSession && !adminSession) {
-        // Query the explicit BusinessClient relationship
-        const businessClient = await prisma.businessClient.findUnique({
-          where: {
-            businessId_clientId: {
-              businessId,
-              clientId: clientSession.clientId,
-            },
-          },
-          select: { role: true },
-        });
-
-        // SECURITY: Only owner and admin roles can manage subscriptions
-        if (!businessClient || (businessClient.role !== "owner" && businessClient.role !== "admin")) {
-          return NextResponse.json(
-            {
-              error: "Forbidden: You do not have permission to manage subscriptions for this business. Contact the business owner.",
-            },
-            { status: 403 }
-          );
-        }
+      if (!business.stripeCustomerId && session.customerId) {
+        await prisma.business.update({ where: { id: businessId }, data: { stripeCustomerId: session.customerId } });
       }
 
-      if (planType === "business30") {
-        const sessionId = await createBusiness30CheckoutSession({
-          businessId,
-          businessEmail: business.billingContactEmail || business.email,
-          businessName: business.companyName,
-        });
-
-        if (!sessionId) {
-          return NextResponse.json(
-            { error: "Failed to create checkout session" },
-            { status: 500 }
-          );
-        }
-
-        const publishableKey = process.env.STRIPE_PUBLISHABLE_KEY;
-        return NextResponse.json({
-          sessionId,
-          publishableKey,
-        });
-      }
-
-      if (planType === "unlimited") {
-        const sessionId = await createUnlimitedCheckoutSession({
-          businessId,
-          businessEmail: business.billingContactEmail || business.email,
-          businessName: business.companyName,
-        });
-
-        if (!sessionId) {
-          return NextResponse.json(
-            { error: "Failed to create checkout session" },
-            { status: 500 }
-          );
-        }
-
-        const publishableKey = process.env.STRIPE_PUBLISHABLE_KEY;
-        return NextResponse.json({
-          sessionId,
-          publishableKey,
-        });
-      }
+      return NextResponse.json({
+        sessionId: session.id,
+        url: session.url,
+        publishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
+      });
     }
 
     return NextResponse.json(

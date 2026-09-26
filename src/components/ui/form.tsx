@@ -2,7 +2,7 @@ import { InputHTMLAttributes, SelectHTMLAttributes, TextareaHTMLAttributes, forw
 import { cn } from "@/lib/utils";
 
 const baseFieldClass =
-  "w-full rounded-lg border border-navy-200 bg-white px-3 py-2 text-sm text-navy-900 placeholder:text-navy-300 focus:border-accent-500 focus:outline-none focus:ring-2 focus:ring-accent-100 transition-colors";
+  "w-full rounded-lg border border-navy-200 bg-white px-3 py-2 text-base sm:text-sm text-navy-900 placeholder:text-navy-300 focus:border-accent-500 focus:outline-none focus:ring-2 focus:ring-accent-100 transition-colors";
 
 export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(
   ({ className, ...props }, ref) => (

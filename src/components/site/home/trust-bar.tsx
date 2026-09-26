@@ -1,11 +1,13 @@
-import { Zap, ShieldCheck, CalendarClock, FileSignature, Building2 } from "lucide-react";
+import { Zap, ShieldCheck, MapPin, Video, Building2 } from "lucide-react";
+import { formatCents } from "@/lib/money";
+import { SUBSCRIPTION_PLAN_LIST } from "@/lib/plans";
 
 const TRUST_ITEMS = [
-  { icon: Zap, label: "Fast Appointments", sub: "~20 minutes, on your schedule" },
-  { icon: ShieldCheck, label: "Michigan Commissioned", sub: "Bonded & insured notary" },
-  { icon: CalendarClock, label: "Convenient Scheduling", sub: "Book online in minutes" },
-  { icon: FileSignature, label: "Secure Service", sub: "Confidential document handling" },
-  { icon: Building2, label: "Individual & Business", sub: "Solutions for every client" },
+  { icon: Zap, label: "~20 minutes", sub: "Typical appointment" },
+  { icon: MapPin, label: "Mobile", sub: "We come to you" },
+  { icon: Video, label: "Online", sub: "Eligible documents" },
+  { icon: ShieldCheck, label: "Commissioned", sub: "Bonded & insured" },
+  { icon: Building2, label: "Business plans", sub: `From ${formatCents(SUBSCRIPTION_PLAN_LIST[0].monthlyCents, { showCents: false })}/mo` },
 ];
 
 // Frosted panel that overlaps the bottom of the hero — the seam between the

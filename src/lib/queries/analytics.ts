@@ -1,3 +1,4 @@
+import { planDisplayName } from "@/lib/plans";
 import { prisma } from "@/lib/db";
 
 function monthKey(d: Date) {
@@ -50,9 +51,10 @@ export async function getRevenueByService() {
 }
 
 export async function getRevenueByPricingPlan() {
-  const businesses = await prisma.business.findMany({ where: { status: "active" }, select: { currentPlanKey: true, monthlyRevenueCents: true } });
-  const plans = await prisma.pricingPlan.findMany();
-  const planNames = new Map(plans.map((p: any) => [p.key, p.name]));
+  const businesses = await prisma.business.findMany({
+    where: { status: "active" },
+    select: { currentPlanKey: true, packageKey: true, monthlyRevenueCents: true },
+  });
 
   const individualAgg = await prisma.appointment.aggregate({
     where: { status: "completed", businessId: null },
@@ -61,8 +63,11 @@ export async function getRevenueByPricingPlan() {
 
   const map = new Map<string, number>();
   map.set("Individual", (individualAgg._sum.totalAmountCents ?? 0) / 100);
+  // Stripe-managed plan first, manually-assigned package second; discontinued
+  // plans (Unlimited) keep their own label so historical revenue stays visible.
   for (const b of businesses) {
-    const name = (planNames.get(b.currentPlanKey ?? "") ?? "Other") as string;
+    const key = b.currentPlanKey || b.packageKey;
+    const name = key ? planDisplayName(key) : "Other";
     map.set(name, (map.get(name) ?? 0) + (b.monthlyRevenueCents ?? 0) / 100);
   }
   return Array.from(map.entries()).map(([label, value]: any) => ({ label, value }));

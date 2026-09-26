@@ -127,7 +127,7 @@ export default async function GoalTrackerPage() {
         <StatCard label="Current Pace / Day" value={formatCents(goalStats.currentPaceCentsPerDay, { showCents: false })} icon={TrendingUp} />
         <StatCard label="Required Pace / Day" value={formatCents(goalStats.requiredPaceCentsPerDay, { showCents: false })} icon={Target} />
         <StatCard label="Appointments Needed" value={String(goalStats.appointmentsNeeded)} icon={Calendar} />
-        <StatCard label="Recurring Clients Needed" value={String(goalStats.recurringClientsNeeded)} icon={Users} />
+        <StatCard label="Business10 Clients Needed" value={String(goalStats.recurringClientsNeeded)} icon={Users} />
       </div>
 
       <Card className="border-accent-200 bg-accent-100/30">

@@ -2,9 +2,9 @@ import { CalendarClock, MapPin, FileCheck2 } from "lucide-react";
 import { SectionHeading } from "@/components/site/section-heading";
 
 const STEPS = [
-  { step: "01", title: "Book Online", icon: CalendarClock, desc: "Choose in-person or remote, pick a time that works, and enter your document details in under two minutes." },
-  { step: "02", title: "Meet Your Notary", icon: MapPin, desc: "We come to you, meet you at a convenient location, or connect remotely — appointments take about 20 minutes." },
-  { step: "03", title: "Get Notarized", icon: FileCheck2, desc: "Sign, verify ID, and you're done. Receive your confirmation and receipt immediately." },
+  { step: "01", title: "Book", icon: CalendarClock, desc: "Pick mobile or online and a time. Under two minutes." },
+  { step: "02", title: "Meet", icon: MapPin, desc: "We arrive — or you join a secure video session." },
+  { step: "03", title: "Done", icon: FileCheck2, desc: "Show ID, sign, and you're notarized. About 20 minutes." },
 ];
 
 // Small decorative, text-free visuals — one per step.
@@ -51,14 +51,13 @@ function StepVisual({ index }: { index: number }) {
 
 export function HowItWorks() {
   return (
-    <section data-steps className="relative overflow-hidden bg-white">
+    <section data-steps className="relative overflow-hidden bg-navy-50">
       <div className="relative mx-auto grid max-w-7xl gap-14 px-4 py-24 sm:px-6 md:min-h-screen md:grid-cols-[0.85fr_1.15fr] md:items-center md:py-0 md:pt-16 lg:px-8">
         <div data-steps-heading>
           <SectionHeading
             align="left"
             eyebrow="How It Works"
-            title="Three steps to a notarized document"
-            description="No phone tag, no waiting rooms — just a fast, professional appointment when you need it."
+            title="Three steps. About 20 minutes."
           />
           <ol aria-hidden className="relative mt-10 hidden md:block">
             <span className="absolute bottom-6 left-[19px] top-6 w-0.5 rounded-full bg-navy-100" />

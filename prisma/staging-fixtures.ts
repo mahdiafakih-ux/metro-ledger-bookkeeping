@@ -6,7 +6,7 @@ import { syncBusinessUsage } from "../src/lib/usage";
 import { detroitDateTimeToUtc, addDaysISO, detroitTodayISO } from "../src/lib/tz";
 
 /**
- * STAGING-ONLY portal test data (Business 30, Business Unlimited,
+ * STAGING-ONLY portal test data (Business30, legacy Business Unlimited,
  * pay-as-you-go, a view-only member, 3 notaries, appointments, invoices).
  *
  * Safety guards — the script refuses to run unless ALL are true:
@@ -118,9 +118,9 @@ const conf = () => `NE-STG${(seq++).toString(36).toUpperCase()}`;
       { description: "Business 30 — monthly plan", type: "other_service", quantity: 1, unitAmountCents: amount, amountCents: amount },
     ] },
   } });
-  const paid = await inv("INV-STG1041", { status: "paid", amountPaidCents: 250000 }, 250000);
-  await prisma.payment.create({ data: { invoiceId: paid.id, amountCents: 250000, method: "stripe", status: "succeeded", paidAt: at(-30, "12:05") } });
-  await inv("INV-STG1042", { issueDate: new Date(`${addDaysISO(T, -3)}T00:00:00Z`), dueDate: new Date(`${addDaysISO(T, 12)}T00:00:00Z`) }, 250000);
+  const paid = await inv("INV-STG1041", { status: "paid", amountPaidCents: 300000 }, 300000);
+  await prisma.payment.create({ data: { invoiceId: paid.id, amountCents: 300000, method: "stripe", status: "succeeded", paidAt: at(-30, "12:05") } });
+  await inv("INV-STG1042", { issueDate: new Date(`${addDaysISO(T, -3)}T00:00:00Z`), dueDate: new Date(`${addDaysISO(T, 12)}T00:00:00Z`) }, 300000);
   await inv("INV-STG1039", { issueDate: new Date(`${addDaysISO(T, -45)}T00:00:00Z`), dueDate: new Date(`${addDaysISO(T, -15)}T00:00:00Z`) }, 4000);
   await inv("INV-STG1043", { status: "draft" }, 99900); // must NOT appear in portal
 

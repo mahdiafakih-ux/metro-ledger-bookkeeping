@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { ArrowRight, Building2, FileText, Lock, ShieldCheck } from "lucide-react";
 import { prisma } from "@/lib/db";
-import { getPortalAccount, invoiceScope } from "@/lib/portal/account";
+import { getPortalAccount, invoiceScope, isMeteredKind, isSubscriptionKind } from "@/lib/portal/account";
+import { PlanPicker } from "@/components/portal/plan-picker";
 import { getOutstanding } from "@/lib/portal/queries";
 import { invoiceStatus, invoiceTotals, subscriptionStatus, sentence } from "@/lib/portal/present";
 import { isStripeConfigured } from "@/lib/stripe";
@@ -14,7 +15,7 @@ import { EmptyState, KeyValue, PageHeader, Panel, PanelHeader, PortalLink, Statu
 
 export const metadata = { title: "Billing" };
 
-export default async function BillingPage({ searchParams }: { searchParams: Promise<{ cancelled?: string }> }) {
+export default async function BillingPage({ searchParams }: { searchParams: Promise<{ cancelled?: string; session_id?: string }> }) {
   const sp = await searchParams;
   const account = await getPortalAccount();
   const { plan, usage } = account;
@@ -29,7 +30,17 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
     getBusinessSettings(),
   ]);
 
-  const isSubscription = plan.kind === "business30" || plan.kind === "unlimited";
+  const isSubscription = isSubscriptionKind(plan.kind);
+  // Business owners/admins choose or switch Business10 / Business30 here.
+  const businessRow =
+    account.business && account.canViewBusiness
+      ? await prisma.business.findUnique({
+          where: { id: account.business.id },
+          select: { currentPlanKey: true, stripeSubscriptionId: true, subscriptionStatus: true },
+        })
+      : null;
+  const hasActiveSubscription =
+    !!businessRow?.stripeSubscriptionId && ["active", "past_due", "incomplete", "trialing"].includes(businessRow.subscriptionStatus);
   const canOpenStripe = isStripeConfigured() && plan.hasStripeCustomer && account.canManageBilling;
 
   return (
@@ -39,6 +50,11 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
         description={account.plan.owner === "business" ? `Plan and billing for ${sentence(account.business?.companyName ?? "")}` : "Your plan, balance and billing settings."}
       />
 
+      {sp.session_id && (
+        <p className="rounded-lg border border-success-100 bg-success-100/60 px-4 py-3 text-sm font-medium text-success-600">
+          Payment received — your plan activates as soon as Stripe confirms it (usually within a minute).
+        </p>
+      )}
       {sp.cancelled === "true" && (
         <p className="rounded-lg border border-navy-100 bg-white px-4 py-3 text-sm text-navy-600">Checkout was cancelled — nothing was charged.</p>
       )}
@@ -64,8 +80,8 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
                     {usage ? (usage.included != null ? `${usage.used} of ${usage.included}` : `${usage.used} · unlimited`) : "—"}
                   </span>
                 </KeyValue>
-                <KeyValue label="Additional appointments">
-                  {plan.kind === "business30" && usage ? (
+                <KeyValue label="Additional notarizations">
+                  {isMeteredKind(plan.kind) && usage ? (
                     usage.overage > 0 ? (
                       <span className="tabular text-warning-600">
                         {usage.overage}
@@ -79,12 +95,25 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
                   )}
                 </KeyValue>
               </dl>
-              {plan.kind === "business30" && plan.overageFeeCents != null && (
+              {isMeteredKind(plan.kind) && plan.overageFeeCents != null && (
                 <p className="border-t border-navy-100 px-5 py-3 text-[13px] text-navy-500">
-                  Appointments beyond the {plan.included} included each month are {formatCents(plan.overageFeeCents)} each.
-                  Additional-appointment charges are reviewed and invoiced separately — they are never charged automatically.
+                  Notarizations beyond the {plan.included} included each billing month are {formatCents(plan.overageFeeCents, { showCents: false })} each.
+                  Additional notarizations are reviewed and invoiced separately — they are never charged automatically.
                 </p>
               )}
+            </Panel>
+          )}
+
+          {account.business && account.canViewBusiness && businessRow && isStripeConfigured() && (
+            <Panel>
+              <PanelHeader title={hasActiveSubscription ? "Change plan" : "Choose a business plan"} />
+              <div className="p-5">
+                <PlanPicker
+                  businessId={account.business.id}
+                  currentPlanKey={businessRow.currentPlanKey}
+                  hasActiveSubscription={hasActiveSubscription}
+                />
+              </div>
             </Panel>
           )}
 
@@ -188,7 +217,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
                 <div>
                   <p className="text-sm font-semibold text-navy-950">Need notaries every month?</p>
                   <p className="mt-1 text-[13px] text-navy-500">
-                    Business plans include priority scheduling, centralized monthly invoicing and a shared preferred-notary team.
+                    Business10 and Business30 include monthly notarizations, one monthly invoice and a shared preferred-notary team.
                   </p>
                   <Link href="/business-solutions" className="mt-3 inline-flex items-center gap-1 text-[13px] font-semibold text-accent-700 hover:text-accent-600">
                     Explore business plans <ArrowRight className="h-3.5 w-3.5" aria-hidden />

@@ -14,6 +14,7 @@ import {
   Car,
   BarChart3,
   FileText,
+  Briefcase,
   Settings,
   BadgeCheck,
   type LucideIcon,
@@ -42,5 +43,6 @@ export const NAV_ITEMS: NavItem[] = [
   { href: "/admin/mileage", label: "Mileage", icon: Car },
   { href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/admin/invoices", label: "Invoices", icon: FileText },
+  { href: "/admin/careers", label: "Careers", icon: Briefcase },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];

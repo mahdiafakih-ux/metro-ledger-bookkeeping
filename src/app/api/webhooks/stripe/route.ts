@@ -13,6 +13,7 @@ import {
   handleSubscriptionUpdated,
   handleSubscriptionDeleted,
 } from "@/lib/subscriptions";
+import { planDisplayName } from "@/lib/plans";
 
 // Route handlers receive the raw body only if we opt out of body parsing —
 // Next.js App Router route handlers already give us the raw stream via
@@ -109,8 +110,9 @@ export async function POST(request: NextRequest) {
           // If unique constraint on stripeEventId is violated, it means we already processed this event
           if (error?.code === "P2002" && error?.meta?.target?.includes("stripeEventId")) {
             console.info(`Event ${event.id} already processed, skipping`);
-            // This is not an error - it's the idempotency mechanism working
-            return;
+            // This is not an error - it's the idempotency mechanism working.
+            // (break, not return: a bare return would send no HTTP response.)
+            break;
           }
           // For other errors, re-throw
           throw error;
@@ -149,7 +151,7 @@ export async function POST(request: NextRequest) {
           // If unique constraint on stripeEventId is violated, already processed
           if (error?.code === "P2002" && error?.meta?.target?.includes("stripeEventId")) {
             console.info(`Failure event ${event.id} already processed, skipping`);
-            return;
+            break;
           }
           throw error;
         }
@@ -178,6 +180,56 @@ export async function POST(request: NextRequest) {
             const { recordRefund } = await import("@/lib/payments");
             await recordRefund({ paymentId: payment.id, stripeRefundId: charge.refunds?.data?.[0]?.id ?? "" });
           }
+        }
+        break;
+      }
+
+      case "invoice.paid": {
+        // Recurring Business10/Business30 payments → revenue (goal tracker,
+        // analytics). Idempotent: the SubscriptionEvent row (UNIQUE
+        // stripeEventId) is written in the same transaction as the revenue.
+        const inv = event.data.object as Stripe.Invoice;
+        const details = (inv as unknown as {
+          parent?: { subscription_details?: { subscription?: string | { id: string }; metadata?: Record<string, string> } };
+          subscription?: string | { id: string } | null;
+        });
+        const subRef = details.parent?.subscription_details?.subscription ?? details.subscription;
+        const subscriptionId = typeof subRef === "string" ? subRef : subRef?.id ?? "";
+        const amountCents = inv.amount_paid ?? 0;
+        if (!subscriptionId || amountCents <= 0) break;
+
+        const customerId = typeof inv.customer === "string" ? inv.customer : inv.customer?.id ?? "";
+        const metaBusinessId = details.parent?.subscription_details?.metadata?.businessId;
+        const business = metaBusinessId
+          ? await prisma.business.findUnique({ where: { id: metaBusinessId } })
+          : await prisma.business.findFirst({ where: { OR: [{ stripeSubscriptionId: subscriptionId }, ...(customerId ? [{ stripeCustomerId: customerId }] : [])] } });
+
+        try {
+          await prisma.$transaction(async (tx) => {
+            await tx.subscriptionEvent.create({
+              data: {
+                stripeEventId: event.id,
+                eventType: "invoice.paid",
+                stripeSubscriptionId: subscriptionId,
+                businessId: business?.id,
+                dataSnapshot: JSON.stringify({ id: inv.id, number: inv.number, amount_paid: inv.amount_paid, customer: customerId }),
+              },
+            });
+            await tx.revenueEntry.create({
+              data: {
+                date: new Date((inv.status_transitions?.paid_at ?? Math.floor(Date.now() / 1000)) * 1000),
+                amountCents,
+                source: "subscription",
+                description: `${business ? `${business.companyName} — ` : ""}${planDisplayName(business?.currentPlanKey)} subscription${inv.number ? ` (Stripe ${inv.number})` : ""}`,
+              },
+            });
+          });
+        } catch (error) {
+          if ((error as { code?: string })?.code === "P2002") {
+            console.info(`Event ${event.id} already processed, skipping`);
+            break;
+          }
+          throw error;
         }
         break;
       }

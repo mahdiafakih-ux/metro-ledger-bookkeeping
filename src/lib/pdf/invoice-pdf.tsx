@@ -109,7 +109,7 @@ export function InvoicePdfDocument({ invoice, business }: InvoicePdfProps) {
           </View>
 
           {statutoryItems.length > 0 && (
-            <Text style={styles.sectionLabel}>Statutory Notarial Fees (MCL 55.287 — max $10/act)</Text>
+            <Text style={styles.sectionLabel}>Statutory Notarial Fees (MCL 55.285 — max $10/act)</Text>
           )}
           {statutoryItems.map((item: any) => (
             <View key={item.id} style={styles.tableRow}>
@@ -167,7 +167,7 @@ export function InvoicePdfDocument({ invoice, business }: InvoicePdfProps) {
 
         <Text style={styles.disclosure}>
           Notar-E Services is not a law firm and does not provide legal advice. Statutory notarial fees are
-          limited to $10 per notarial act under Michigan law (MCL 55.287). Other charges reflect separately
+          limited to $10 per notarial act under Michigan law (MCL 55.285). Other charges reflect separately
           disclosed, lawful business services.
         </Text>
       </Page>

@@ -4,6 +4,7 @@ import { useLayoutEffect, useRef } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { SplitText } from "gsap/SplitText";
+import { applySiteMotion } from "@/components/site/motion";
 
 // Plugins are registered client-side only; registerPlugin is idempotent.
 if (typeof window !== "undefined") {
@@ -41,6 +42,8 @@ function prepStrokes(svg: Element | null | undefined) {
  *  - ≥ 768px: pinned How It Works.
  *  - ≥ 1024px: pinned Business section, pricing composition, hero document.
  *  - ≥ 1024px with a fine pointer: mouse depth, magnetic buttons, tilt, card light.
+ *  - Shared hooks (data-reveal / data-stagger / data-count / data-float) come
+ *    from components/site/motion.tsx so every public page animates the same way.
  */
 export function HomeAnimations({ children }: { children: React.ReactNode }) {
   const root = useRef<HTMLDivElement>(null);
@@ -73,7 +76,8 @@ export function HomeAnimations({ children }: { children: React.ReactNode }) {
           business(el, c);
           pricing(el, c);
           ctaBanner(el, c);
-          genericReveals(el);
+          applySiteMotion(el, { lg: c.lg }); // data-reveal / data-stagger / data-count / data-float
+          twoWays(el, c);
           if (c.lg && c.fine) pointerEffects(el, cleanups);
 
           return () => cleanups.forEach((fn) => fn());
@@ -187,6 +191,9 @@ function heroSequence(root: HTMLElement, c: Conditions, cleanups: Cleanup[]) {
   tl.set(cta, { opacity: 1 }, 1.3)
     .from(cta ? Array.from(cta.children) : [], { y: 26, opacity: 0, duration: 1, stagger: 0.1, ease: "expo.out" }, 1.3)
     .fromTo(q(hero, "[data-sheen]"), { xPercent: -160 }, { xPercent: 360, duration: 1.2, ease: "power2.inOut" }, 1.9);
+
+  const chips = q(hero, '[data-hero-item="chips"]');
+  tl.set(chips, { opacity: 1 }, 1.6).from(chips ? Array.from(chips.children) : [], { y: 12, opacity: 0, duration: 0.8, stagger: 0.08, ease: "power3.out" }, 1.6);
 
   // Document composition (desktop): rises, signs itself, gets sealed.
   if (c.lg) {
@@ -577,11 +584,39 @@ function ctaBanner(root: HTMLElement, c: Conditions) {
   }
 }
 
-/** Simple reveal for headings/links marked data-reveal. */
-function genericReveals(root: HTMLElement) {
-  qa(root, "[data-reveal]").forEach((node) =>
-    gsap.from(node, { y: 40, opacity: 0, duration: 1.1, ease: "expo.out", scrollTrigger: { trigger: node, start: "top 85%", once: true } })
+/* ------------------------------------------------------------------------ */
+/* Two ways to notarize — the two cards slide in from opposite sides          */
+/* ------------------------------------------------------------------------ */
+
+function twoWays(root: HTMLElement, c: Conditions) {
+  const sec = q(root, "[data-ways]");
+  if (!sec) return;
+  const cards = qa(sec, "[data-way-card]");
+  cards.forEach((card, i) =>
+    gsap.from(card, {
+      x: c.md ? (i === 0 ? -80 : 80) : 0,
+      y: c.md ? 0 : 50,
+      opacity: 0,
+      rotationY: c.lg ? (i === 0 ? 10 : -10) : 0,
+      transformPerspective: 1200,
+      duration: 1.3,
+      ease: "expo.out",
+      scrollTrigger: { trigger: sec, start: "top 75%", once: true },
+    })
   );
+  // The connecting "or" badge pops once both cards land.
+  gsap.from(q(sec, "[data-way-or]"), {
+    scale: 0,
+    opacity: 0,
+    duration: 0.6,
+    ease: "back.out(2)",
+    delay: 0.6,
+    scrollTrigger: { trigger: sec, start: "top 75%", once: true },
+  });
+  // Online card: the "live session" dots pulse while on screen.
+  if (c.lg) {
+    gsap.to(qa(sec, "[data-live-dot]"), { opacity: 0.25, duration: 0.8, repeat: -1, yoyo: true, stagger: 0.25, ease: "sine.inOut" });
+  }
 }
 
 /* ------------------------------------------------------------------------ */

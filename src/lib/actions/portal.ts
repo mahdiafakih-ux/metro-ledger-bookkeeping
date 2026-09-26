@@ -8,6 +8,7 @@ import {
   MAX_PREFERRED_NOTARIES,
   appointmentScope,
   getPortalAccount,
+  isSubscriptionKind,
   preferenceOwner,
   type PortalAccount,
 } from "@/lib/portal/account";
@@ -138,13 +139,13 @@ export async function submitPortalRequest(
   //
   // • Pay-as-you-go: identical to public booking (statutory fee per act from the
   //   "individual" plan + that plan's separately-disclosed service fee).
-  // • Business 30 / Unlimited: submitted under the subscription. We do NOT
+  // • Business10 / Business30 (or a legacy Unlimited subscription): submitted under the subscription. We do NOT
   //   assume a per-appointment charge or a number of notarial acts: statutory
   //   and service amounts start at $0 and the actual statutory notarial-act
   //   fees (if any are charged) are recorded separately on the appointment by
   //   Notar-E after the appointment, based on the acts actually performed.
   const underSubscription =
-    (account.plan.kind === "business30" || account.plan.kind === "unlimited") &&
+    isSubscriptionKind(account.plan.kind) &&
     ["", "active", "past_due", "trialing"].includes(account.plan.status);
 
   let statutoryFeeCents = 0;

@@ -14,8 +14,7 @@ export function PricingShowcase({ plans }: { plans: PricingPlanView[] }) {
         <div data-reveal>
           <SectionHeading
             eyebrow="Pricing"
-            title="Simple, transparent pricing"
-            description="Every price separates the Michigan-limited statutory notarial fee from other lawful service charges."
+            title="Simple pricing. No surprises."
           />
         </div>
         <div data-pricing-stage className="mt-20 grid gap-8 lg:grid-cols-3 lg:items-stretch">
@@ -52,7 +51,7 @@ export function PricingShowcase({ plans }: { plans: PricingPlanView[] }) {
         </div>
         <div data-reveal className="mt-14 text-center">
           <Link href="/pricing" className="text-sm font-semibold text-accent-600 hover:text-accent-700">
-            Full pricing details & comparison →
+            Compare plans &amp; estimate your month →
           </Link>
         </div>
       </div>

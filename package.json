@@ -14,7 +14,8 @@
     "db:studio": "prisma studio",
     "db:reset": "prisma migrate reset --force",
     "db:tz-audit": "tsx prisma/tz-audit.ts",
-    "db:staging-fixtures": "tsx prisma/staging-fixtures.ts"
+    "db:staging-fixtures": "tsx prisma/staging-fixtures.ts",
+    "test": "node --import tsx --test tests/*.test.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"

@@ -153,7 +153,7 @@ export default function SetupWizardPage() {
                 <p>Starting balance: ${startingRevenue.toLocaleString()}</p>
               </div>
               <div className="rounded-xl bg-navy-800 p-4 text-xs text-navy-300">
-                Pricing (Individual $125 / Business 20 $2,500 / Unlimited $4,000) is pre-loaded with
+                Pricing (Individual $125 / Business10 $1,000 / Business30 $3,000, $75 per extra notarization) is pre-loaded with
                 Michigan-compliant fee breakdowns. Payment integrations (Stripe) can be connected later
                 in Settings without any code changes.
               </div>

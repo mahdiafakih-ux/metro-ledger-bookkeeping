@@ -39,17 +39,20 @@ export function BookingWizard({
   statutoryFeePerActCents,
   serviceFeeCents,
   maxAdvanceDays,
+  initialType = "",
 }: {
   statutoryFeePerActCents: number;
   serviceFeeCents: number;
   maxAdvanceDays: number;
+  /** Pre-select from ?type=remote|in_person (e.g. the "Notarize Online" CTA). */
+  initialType?: "in_person" | "remote" | "";
 }) {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
-  const [appointmentType, setAppointmentType] = useState<"in_person" | "remote" | "">("");
+  const [appointmentType, setAppointmentType] = useState<"in_person" | "remote" | "">(initialType);
   const [serviceType, setServiceType] = useState("");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
@@ -155,11 +158,13 @@ export function BookingWizard({
             <h2 className="text-xl font-bold text-navy-900">How would you like your appointment?</h2>
             <div className="mt-6 grid gap-4 sm:grid-cols-2">
               {[
-                { key: "in_person", label: "In-Person", desc: "We meet you at a convenient location.", icon: MapPin },
-                { key: "remote", label: "Remote / Online", desc: "Available where legally eligible for your document.", icon: Video },
-              ].map((opt: any) => (
+                { key: "in_person", label: "Mobile Notary", desc: "We come to you.", icon: MapPin },
+                { key: "remote", label: "Notarize Online", desc: "Secure video session — eligible documents only.", icon: Video },
+              ].map((opt) => (
                 <button
                   key={opt.key}
+                  type="button"
+                  aria-pressed={appointmentType === opt.key}
                   onClick={() => setAppointmentType(opt.key as "in_person" | "remote")}
                   className={`rounded-2xl border-2 p-6 text-left transition-colors ${appointmentType === opt.key ? "border-accent-500 bg-accent-100/40" : "border-navy-100 hover:border-navy-200"}`}
                 >
@@ -169,6 +174,13 @@ export function BookingWizard({
                 </button>
               ))}
             </div>
+            {appointmentType === "remote" && (
+              <p className="mt-4 flex gap-2 rounded-xl bg-navy-50 p-3 text-xs leading-relaxed text-navy-500">
+                <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-accent-600" />
+                Remote online notarization is available for eligible documents and transactions. Sessions run on
+                BlueNotary, a third-party platform; we&apos;ll confirm eligibility before your session.
+              </p>
+            )}
           </div>
         )}
 
@@ -292,7 +304,7 @@ export function BookingWizard({
             <h2 className="text-xl font-bold text-navy-900">Review & pricing</h2>
             <div className="rounded-xl border border-navy-100 p-5 text-sm">
               <div className="flex justify-between py-1"><span className="text-navy-500">Service</span><span className="font-medium text-navy-900">{serviceType}</span></div>
-              <div className="flex justify-between py-1"><span className="text-navy-500">Appointment</span><span className="font-medium text-navy-900">{appointmentType === "remote" ? "Remote / Online" : "In-Person"}</span></div>
+              <div className="flex justify-between py-1"><span className="text-navy-500">Appointment</span><span className="font-medium text-navy-900">{appointmentType === "remote" ? "Online (remote)" : "Mobile / in-person"}</span></div>
               <div className="flex justify-between py-1"><span className="text-navy-500">Date & Time</span><span className="font-medium text-navy-900">{date && formatDate(date)} {slots.find((s) => s.value === time)?.label}</span></div>
               <div className="flex justify-between py-1"><span className="text-navy-500">Notarial Acts</span><span className="font-medium text-navy-900">{numberOfActs}</span></div>
               <hr className="my-3 border-navy-100" />
@@ -302,7 +314,7 @@ export function BookingWizard({
               <div className="flex justify-between py-1 text-base"><span className="font-bold text-navy-900">Total Due</span><span className="font-bold text-navy-900">{formatCents(totalCents, { showCents: false })}</span></div>
             </div>
             <div className="rounded-xl bg-navy-50 p-4 text-xs leading-relaxed text-navy-500">
-              Under Michigan law (MCL 55.287), the notarial act fee is capped at $10 per act. The
+              Under Michigan law (MCL 55.285), the notarial act fee is capped at $10 per act. The
               remaining amount is a separately-disclosed fee for signing-agent time and administrative
               service — not part of the statutory notarization fee. Payment is collected at your
               appointment. Notar-E Services is not a law firm and does not provide legal advice.

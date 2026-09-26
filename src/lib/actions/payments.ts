@@ -42,7 +42,7 @@ export async function createAppointmentCheckoutSession(appointmentId: string): P
         currency: "usd",
         product_data: {
           name: `Michigan Statutory Notarial Fee (${appointment.numberOfActs} act${appointment.numberOfActs === 1 ? "" : "s"})`,
-          description: "Capped at $10 per notarial act under Michigan law (MCL 55.287).",
+          description: "Capped at $10 per notarial act under Michigan law (MCL 55.285).",
         },
         unit_amount: appointment.statutoryFeeCents,
       },
@@ -111,7 +111,7 @@ export async function createInvoiceCheckoutSession(invoiceId: string): Promise<C
       currency: "usd",
       product_data: {
         name: item.type === "statutory_fee" ? `Michigan Statutory Notarial Fee — ${item.description}` : item.description,
-        description: item.type === "statutory_fee" ? "Capped at $10 per notarial act under Michigan law (MCL 55.287)." : "Lawful business service charge — separate from the notarial act fee.",
+        description: item.type === "statutory_fee" ? "Capped at $10 per notarial act under Michigan law (MCL 55.285)." : "Lawful business service charge — separate from the notarial act fee.",
       },
       unit_amount: item.unitAmountCents,
     },

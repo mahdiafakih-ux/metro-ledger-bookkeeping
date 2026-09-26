@@ -63,7 +63,7 @@ export function ClientForm({ clientId, initial }: { clientId?: string; initial?:
             {["website", "referral", "google", "outreach", "social", "linkedin", "other"].map((s) => <option key={s} value={s}>{titleCase(s)}</option>)}
           </Select>
         </FormField>
-        <FormField label="Current Package"><Input value={currentPackage} onChange={(e) => setCurrentPackage(e.target.value)} placeholder="e.g. Individual, Business 20" /></FormField>
+        <FormField label="Current Package"><Input value={currentPackage} onChange={(e) => setCurrentPackage(e.target.value)} placeholder="e.g. Individual, Business10, Business30" /></FormField>
         <FormField label="Amount Owed ($)"><Input type="number" min={0} step="0.01" value={amountOwed} onChange={(e) => setAmountOwed(Number(e.target.value))} /></FormField>
         <FormField label="Follow-Up Date"><Input type="date" value={followUpDate} onChange={(e) => setFollowUpDate(e.target.value)} /></FormField>
       </div>

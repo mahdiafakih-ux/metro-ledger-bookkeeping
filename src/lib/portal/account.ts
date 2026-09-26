@@ -3,8 +3,8 @@ import { redirect } from "next/navigation";
 import type { Prisma, PricingPlan } from "@prisma/client";
 import { prisma } from "@/lib/db";
 import { getClientSession } from "@/lib/client-auth";
-import { getBusinessSettings } from "@/lib/settings";
 import { detroitMonthRange } from "@/lib/tz";
+import { SUBSCRIPTION_PLANS } from "@/lib/plans";
 
 /**
  * Everything the client portal needs to know about "who is signed in and what
@@ -16,7 +16,19 @@ import { detroitMonthRange } from "@/lib/tz";
  * resolves that relationship for the portal.
  */
 
-export type PlanKind = "business30" | "unlimited" | "payg" | "other";
+// "unlimited" = discontinued Business Unlimited; kept only so a legacy
+// subscriber's portal still renders. It is never offered or purchasable.
+export type PlanKind = "business10" | "business30" | "unlimited" | "payg" | "other";
+
+/** Plans billed as a monthly subscription (incl. the legacy Unlimited). */
+export function isSubscriptionKind(kind: PlanKind): kind is "business10" | "business30" | "unlimited" {
+  return kind === "business10" || kind === "business30" || kind === "unlimited";
+}
+
+/** Plans with a monthly allowance + per-notarization overage. */
+export function isMeteredKind(kind: PlanKind): kind is "business10" | "business30" {
+  return kind === "business10" || kind === "business30";
+}
 
 export interface PortalPlan {
   kind: PlanKind;
@@ -73,9 +85,10 @@ export interface PortalAccount {
   usage: PortalUsage | null;
 }
 
-const BUSINESS_PLAN_KEYS = new Set(["business30", "unlimited"]);
+const BUSINESS_PLAN_KEYS = new Set(["business10", "business30", "unlimited"]);
 
 function planKindFor(key: string): PlanKind {
+  if (key === "business10") return "business10";
   if (key === "business30") return "business30";
   if (key === "unlimited") return "unlimited";
   if (key === "" || key === "individual") return "payg";
@@ -113,7 +126,6 @@ export const getPortalAccount = cache(async (): Promise<PortalAccount> => {
   const business = membership?.business ?? null;
   const role = membership?.role ?? "";
 
-  const settings = await getBusinessSettings();
   const plans = await prisma.pricingPlan.findMany();
   const planByKey = new Map<string, PricingPlan>(plans.map((p) => [p.key, p]));
 
@@ -133,8 +145,10 @@ export const getPortalAccount = cache(async (): Promise<PortalAccount> => {
   const periodStart = hasStripePeriod ? src.currentPeriodStart! : month.start;
   const periodEnd = hasStripePeriod ? src.currentPeriodEnd! : month.end;
 
-  const included =
-    kind === "business30" ? pricing?.appointmentsIncluded ?? settings.business30IncludedAppointments : null;
+  // Business10/Business30 numbers come from the plan catalog (the same source
+  // Stripe billing and the usage ledger use), never from editable DB rows.
+  const catalog = isMeteredKind(kind) ? SUBSCRIPTION_PLANS[kind] : null;
+  const included = catalog ? catalog.includedNotarizations : null;
 
   const plan: PortalPlan = {
     kind,
@@ -148,9 +162,9 @@ export const getPortalAccount = cache(async (): Promise<PortalAccount> => {
     priceCents: pricing
       ? kind === "payg"
         ? pricing.statutoryFeeCents + pricing.serviceFeeCents
-        : pricing.totalCents
-      : null,
-    billingPeriod: pricing ? (pricing.billingPeriod === "monthly" ? "monthly" : "one_time") : null,
+        : catalog?.monthlyCents ?? pricing.totalCents
+      : catalog?.monthlyCents ?? null,
+    billingPeriod: catalog ? "monthly" : pricing ? (pricing.billingPeriod === "monthly" ? "monthly" : "one_time") : null,
     statutoryFeeCents: pricing?.statutoryFeeCents ?? null,
     serviceFeeCents: pricing?.serviceFeeCents ?? null,
     serviceFeeLabel: pricing?.serviceFeeLabel ?? "",
@@ -159,28 +173,46 @@ export const getPortalAccount = cache(async (): Promise<PortalAccount> => {
     periodEnd,
     periodSource: hasStripePeriod ? "stripe" : "calendar_month",
     included,
-    overageFeeCents: kind === "business30" ? pricing?.overageFeeCents ?? null : null,
+    overageFeeCents: catalog ? catalog.overagePerNotarizationCents : null,
     owner,
     hasStripeCustomer: !!src.stripeCustomerId,
   };
 
   let usage: PortalUsage | null = null;
-  if (kind === "business30" || kind === "unlimited") {
-    // Usage = completed appointments on this account within the billing period.
-    const used = await prisma.appointment.count({
+  if (isSubscriptionKind(kind)) {
+    // Usage = notarizations (notarial acts) on completed appointments on this
+    // account within the billing period.
+    const agg = await prisma.appointment.aggregate({
       where: {
         ...(owner === "business" && business ? { businessId: business.id } : { clientId: client.id }),
         status: "completed",
         scheduledStart: { gte: periodStart, lt: periodEnd },
       },
+      _sum: { numberOfActs: true },
+      _count: { _all: true },
     });
-    const overage = included != null ? Math.max(0, used - included) : 0;
+    const used = Math.max(agg._sum.numberOfActs ?? 0, agg._count._all);
+    let overage = included != null ? Math.max(0, used - included) : 0;
+    let estimatedOverageCents: number | null = plan.overageFeeCents != null ? overage * plan.overageFeeCents : null;
+    // When the business has a Stripe period, the usage ledger is authoritative
+    // (it keeps each notarization's original plan terms across plan switches).
+    if (owner === "business" && business && hasStripePeriod && isMeteredKind(kind)) {
+      const ledger = await prisma.businessUsage.aggregate({
+        where: { businessId: business.id, billingPeriodStart: periodStart, billingPeriodEnd: periodEnd },
+        _sum: { overageUnits: true, overageAmountCents: true },
+        _count: { _all: true },
+      });
+      if (ledger._count._all > 0) {
+        overage = ledger._sum.overageUnits ?? 0;
+        estimatedOverageCents = ledger._sum.overageAmountCents ?? 0;
+      }
+    }
     usage = {
       used,
       included,
       remaining: included != null ? Math.max(0, included - used) : null,
       overage,
-      estimatedOverageCents: plan.overageFeeCents != null ? overage * plan.overageFeeCents : null,
+      estimatedOverageCents,
       percent: included ? Math.min(100, Math.round((used / included) * 100)) : null,
     };
   }

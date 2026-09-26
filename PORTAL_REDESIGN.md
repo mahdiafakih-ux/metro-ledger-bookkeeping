@@ -17,9 +17,9 @@ Branch: `portal-redesign`. **Not deployed.** The production database migration h
 - **Existing appointment data was not changed.** `npm run db:tz-audit` is read-only and lists appointments that were likely saved shifted by the old code, so you can review them manually.
 
 ### Usage counting (no automatic overage billing)
-- `src/lib/usage.ts` `syncBusinessUsage()` keeps the `BusinessUsage` ledger and `Business.monthlyUsageCount` accurate. It counts completed appointments inside the Stripe billing period and marks the ones beyond the included amount, using `PricingPlan.appointmentsIncluded` and `overageFeeCents` from the admin pricing editor.
+- `src/lib/usage.ts` `syncBusinessUsage()` keeps the `BusinessUsage` ledger and `Business.monthlyUsageCount` accurate. It counts **notarizations** (notarial acts) on completed appointments inside the Stripe billing period and marks the ones beyond the plan allowance. Allowances and the $75 rate come from `src/lib/plans.ts` (Business10 = 10, Business30 = 30). Each row keeps the plan and rate it was recorded under, so switching plans mid-month never re-prices past usage. Legacy Unlimited is counted but never accrues overage.
 - It runs after admin appointment create, edit, status change and delete, and after Stripe subscription created/updated events.
-- **It never creates invoices or charges.** `createOverageInvoice` is still not called anywhere, and rows stay `billingStatus = "unbilled"`.
+- **It never creates invoices or charges automatically.** Overage is billed only when an admin clicks "Invoice overage" on the business page. That creates a **draft** invoice, which clients don't see until it's sent. See `docs/PLANS_AND_BILLING.md`.
 
 ### Client portal (`src/app/portal`)
 - **Navigation.** New layout (`components/portal/shell.tsx`): a compact grouped sidebar with an account menu on desktop; on mobile, a header, a slide-out drawer with focus trapping and Escape to close, and a bottom tab bar with Request a Notary in the center.

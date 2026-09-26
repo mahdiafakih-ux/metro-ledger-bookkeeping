@@ -1,5 +1,5 @@
 import { AlertTriangle, ArrowRight, Infinity as InfinityIcon, Plus, Sparkles } from "lucide-react";
-import type { PortalAccount } from "@/lib/portal/account";
+import { isMeteredKind, type PortalAccount } from "@/lib/portal/account";
 import { subscriptionStatus } from "@/lib/portal/present";
 import { formatCents } from "@/lib/money";
 import { formatDetroitDate } from "@/lib/tz";
@@ -26,7 +26,7 @@ export function PlanCard({ account, showActions = true }: { account: PortalAccou
   const { plan, usage } = account;
   const status = subscriptionStatus(plan.status);
 
-  if (plan.kind === "business30" && usage && usage.included != null) {
+  if (isMeteredKind(plan.kind) && usage && usage.included != null) {
     const over = usage.overage > 0;
     return (
       <Panel className="overflow-hidden">
@@ -54,7 +54,7 @@ export function PlanCard({ account, showActions = true }: { account: PortalAccou
               )}
             </p>
           </div>
-          <p className="mt-1 text-[13px] text-navy-500">completed appointments this billing period</p>
+          <p className="mt-1 text-[13px] text-navy-500">notarizations this billing period</p>
 
           <div className="mt-4">
             <UsageMeter used={usage.used} included={usage.included} />
@@ -71,12 +71,12 @@ export function PlanCard({ account, showActions = true }: { account: PortalAccou
               <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
               <p>
                 <span className="font-semibold">
-                  {usage.overage} additional appointment{usage.overage === 1 ? "" : "s"}
+                  {usage.overage} additional notarization{usage.overage === 1 ? "" : "s"}
                 </span>
                 {usage.estimatedOverageCents != null && plan.overageFeeCents != null ? (
                   <>
                     {" "}· estimated {formatCents(usage.estimatedOverageCents)} at {formatCents(plan.overageFeeCents)} each.
-                    Any additional-appointment charges are reviewed and invoiced separately.
+                    Additional notarizations are reviewed and invoiced separately — never charged automatically.
                   </>
                 ) : (
                   <> beyond your included amount. We&apos;ll contact you about any additional charges.</>
@@ -111,10 +111,14 @@ export function PlanCard({ account, showActions = true }: { account: PortalAccou
           </div>
           <div className="mt-6 flex items-end gap-3">
             <p className="tabular text-[40px] font-semibold leading-none tracking-[-0.03em]">{usage?.used ?? 0}</p>
-            <p className="pb-1 text-[13px] text-navy-300">completed appointments this period</p>
+            <p className="pb-1 text-[13px] text-navy-300">notarizations this period</p>
           </div>
           <p className="mt-4 inline-flex items-center gap-2 rounded-lg bg-white/5 px-3 py-2 text-[13px] text-navy-100 ring-1 ring-inset ring-white/10">
             <InfinityIcon className="h-4 w-4 text-accent-300" aria-hidden /> Unlimited qualifying appointments
+          </p>
+          <p className="mt-3 text-xs text-navy-300">
+            This plan has been discontinued for new customers. Your subscription continues unchanged; your account owner can
+            switch to Business10 or Business30 from Billing.
           </p>
           <p className="mt-3 text-xs text-navy-300">
             <PeriodNote account={account} />
@@ -159,7 +163,7 @@ export function PlanCard({ account, showActions = true }: { account: PortalAccou
         )}
       </div>
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-navy-100 bg-navy-50/50 px-5 py-3.5 sm:px-6">
-        <p className="text-[13px] text-navy-500">Need a notary often? Ask about business plans.</p>
+        <p className="text-[13px] text-navy-500">Need a notary often? See Business10 &amp; Business30.</p>
         {showActions && (
           <PortalLink href="/portal/request" size="sm">
             <Plus className="h-4 w-4" aria-hidden /> Request a Notary

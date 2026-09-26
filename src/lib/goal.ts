@@ -1,3 +1,4 @@
+import { SUBSCRIPTION_PLANS } from "@/lib/plans";
 export const MILESTONE_DOLLARS = [5000, 10000, 15000, 20000, 25000, 30000, 35000, 40000, 45000, 50000];
 export const MILESTONE_CENTS = MILESTONE_DOLLARS.map((d) => d * 100);
 
@@ -52,7 +53,7 @@ export function computeGoalStats(input: GoalStatsInput): GoalStats {
     goalStartDate,
     earnedCents,
     avgAppointmentCents = 12500,
-    businessPackageCents = 250000,
+    businessPackageCents = SUBSCRIPTION_PLANS.business10.monthlyCents,
   } = input;
 
   const remainingCents = Math.max(goalAmountCents - earnedCents, 0);

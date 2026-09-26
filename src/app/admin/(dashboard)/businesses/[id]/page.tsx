@@ -5,22 +5,29 @@ import { prisma } from "@/lib/db";
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge, STATUS_TONES } from "@/components/ui/badge";
 import { BusinessForm } from "@/components/admin/business-form";
+import { BusinessSubscriptionPanel } from "@/components/admin/business-subscription-panel";
+import { getBusinessUsageSummary } from "@/lib/subscriptions";
+import { isStripeConfigured, missingStripePriceEnvVars } from "@/lib/stripe";
 import { formatCents } from "@/lib/money";
 import { BUSINESS_CATEGORY_LABELS } from "@/lib/constants";
 import { formatDate, formatDateTime, titleCase, telHref } from "@/lib/utils";
 
 export default async function BusinessDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [business, plans, invoices, revenueAgg] = await Promise.all([
+  const [business, plans, invoices, revenueAgg, usage, members, unbilled] = await Promise.all([
     prisma.business.findUnique({ where: { id }, include: { appointments: { orderBy: { scheduledStart: "desc" }, take: 20 } } }),
-    prisma.pricingPlan.findMany({ where: { billingPeriod: "monthly" }, select: { key: true, name: true } }),
+    prisma.pricingPlan.findMany({ where: { billingPeriod: "monthly", isActive: true }, orderBy: { sortOrder: "asc" }, select: { key: true, name: true } }),
     prisma.invoice.findMany({ where: { businessId: id, status: { in: ["sent", "overdue", "partially_paid"] } }, include: { items: true } }),
     prisma.revenueEntry.aggregate({
       where: { OR: [{ appointment: { businessId: id } }, { invoice: { businessId: id } }] },
       _sum: { amountCents: true },
     }),
+    getBusinessUsageSummary(id),
+    prisma.businessClient.findMany({ where: { businessId: id }, include: { client: { select: { name: true, email: true } } }, orderBy: { createdAt: "asc" } }),
+    prisma.businessUsage.aggregate({ where: { businessId: id, billingStatus: "unbilled", overageUnits: { gt: 0 } }, _sum: { overageAmountCents: true } }),
   ]);
   if (!business) notFound();
+  const missingPriceEnv = missingStripePriceEnvVars().filter((v) => v !== "STRIPE_PRICE_INDIVIDUAL");
 
   const completedAppointments = business.appointments.filter((a: any) => a.status === "completed").length;
   const outstandingCents = invoices.reduce((sum: any, inv: any) => sum + inv.items.reduce((s, i) => s + i.amountCents, 0) + inv.taxCents - inv.amountPaidCents, 0);
@@ -70,6 +77,19 @@ export default async function BusinessDetailPage({ params }: { params: Promise<{
         <Card className="p-4"><p className="text-xs font-semibold uppercase text-navy-400">Contract End</p><p className="mt-1 text-xl font-bold text-navy-900">{business.contractEndDate ? formatDate(business.contractEndDate) : "—"}</p></Card>
         <Card className="p-4"><p className="text-xs font-semibold uppercase text-navy-400">Renewal</p><p className="mt-1 text-xl font-bold text-navy-900">{business.renewalDate ? formatDate(business.renewalDate) : "—"}</p></Card>
       </div>
+
+      <BusinessSubscriptionPanel
+        businessId={business.id}
+        planKey={business.currentPlanKey}
+        subscriptionStatus={business.subscriptionStatus}
+        hasSubscription={!!business.stripeSubscriptionId}
+        periodEnd={business.currentPeriodEnd ? business.currentPeriodEnd.toISOString() : null}
+        usage={usage}
+        totalUnbilledOverageCents={unbilled._sum.overageAmountCents ?? 0}
+        members={members.map((m) => ({ id: m.id, name: m.client.name, email: m.client.email, role: m.role }))}
+        stripeReady={isStripeConfigured() && missingPriceEnv.length === 0}
+        missingPriceEnv={missingPriceEnv}
+      />
 
       {(business.billingContactName || business.billingContactEmail) && (
         <Card className="p-4">

@@ -92,7 +92,7 @@ export default async function PublicInvoicePage({
           </thead>
           <tbody>
             {statutoryItems.length > 0 && (
-              <tr><td colSpan={4} className="pt-4 pb-1 text-xs font-bold uppercase tracking-wide text-navy-400">Statutory Notarial Fees (MCL 55.287 — max $10/act)</td></tr>
+              <tr><td colSpan={4} className="pt-4 pb-1 text-xs font-bold uppercase tracking-wide text-navy-400">Statutory Notarial Fees (MCL 55.285 — max $10/act)</td></tr>
             )}
             {statutoryItems.map((item: any) => (
               <tr key={item.id} className="border-b border-navy-50">

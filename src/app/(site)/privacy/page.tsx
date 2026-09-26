@@ -20,6 +20,12 @@ export default function PrivacyPage() {
             information, and payment status. We do not collect or store the content of the documents
             you have notarized.
           </p>
+          <p className="mt-2 leading-relaxed">
+            If you apply to join the Notar-E network through our Careers page, we collect the details
+            you provide (contact information, location, notary commission and experience details,
+            availability) and any resume you upload. Application data is visible only to authorized
+            Notar-E staff and is used solely to evaluate your application.
+          </p>
         </section>
         <section>
           <h2 className="text-lg font-bold text-navy-900">2. How We Use Your Information</h2>
@@ -33,7 +39,8 @@ export default function PrivacyPage() {
           <h2 className="text-lg font-bold text-navy-900">3. Information Sharing</h2>
           <p className="mt-2 leading-relaxed">
             We do not share your personal information with third parties except as necessary to
-            provide our services (such as payment processing) or as required by law.
+            provide our services (such as payment processing through Stripe, or remote online
+            notarization sessions conducted on BlueNotary&apos;s platform) or as required by law.
           </p>
         </section>
         <section>

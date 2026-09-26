@@ -1,60 +1,70 @@
 import type { Metadata } from "next";
-import { ShieldCheck, Zap, Users, Award } from "lucide-react";
+import { ArrowRight, Award, ShieldCheck, Users, Video, Zap } from "lucide-react";
 import { SectionHeading } from "@/components/site/section-heading";
 import { LinkButton } from "@/components/ui/button";
+import { PageHero } from "@/components/site/page-hero";
+import { SiteMotion } from "@/components/site/motion";
 
 export const metadata: Metadata = {
-  title: "About Us",
-  description: "Notar-E Services is a Michigan-commissioned notary company built for speed, professionalism, and convenience.",
+  title: "About Notar-E Services",
+  description: "Notar-E Services is a Michigan-commissioned mobile and online notary company built for speed, transparency and convenience.",
+  alternates: { canonical: "/about" },
 };
+
+const VALUES = [
+  { icon: Zap, title: "Fast", desc: "Book in minutes. Done in about 20." },
+  { icon: ShieldCheck, title: "Trusted", desc: "Commissioned, bonded & insured." },
+  { icon: Video, title: "Flexible", desc: "Mobile or online for eligible documents." },
+  { icon: Award, title: "Transparent", desc: "Statutory fees always itemized." },
+];
 
 export default function AboutPage() {
   return (
-    <div>
-      <section className="bg-navy-950 py-24">
-        <div className="mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8">
-          <p className="mb-4 text-xs font-bold uppercase tracking-[0.3em] text-accent-300">About Notar-E Services</p>
-          <h1 className="text-4xl font-extrabold text-white sm:text-5xl">Notarization, reimagined for Michigan</h1>
-          <p className="mx-auto mt-6 max-w-2xl text-lg text-navy-200">
-            We started Notar-E Services because getting a document notarized shouldn&apos;t mean
-            driving across town, waiting in a lobby, or playing phone tag. We built a modern,
-            technology-driven notary company that meets individuals and businesses where they are.
-          </p>
-        </div>
-      </section>
+    <SiteMotion>
+      <PageHero
+        eyebrow="About"
+        title="Notarization,"
+        accent="reimagined."
+        subtitle="No driving across town. No waiting rooms. No phone tag."
+      />
 
       <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
-        <SectionHeading eyebrow="Our Mission" title="Make notarization simple, professional, and convenient" />
-        <div className="mt-14 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {[
-            { icon: Zap, title: "Speed", desc: "Appointments booked online in minutes, completed in about 20." },
-            { icon: ShieldCheck, title: "Trust", desc: "Michigan-commissioned, bonded, and insured." },
-            { icon: Users, title: "Convenience", desc: "In-person and remote/online options, on your schedule." },
-            { icon: Award, title: "Professionalism", desc: "A modern experience for individuals and businesses alike." },
-          ].map((v) => (
-            <div key={v.title} className="rounded-2xl border border-navy-100 p-6 text-center">
-              <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-xl bg-accent-100 text-accent-600">
+        <div data-reveal>
+          <SectionHeading eyebrow="What we stand for" title="Simple. Professional. Convenient." />
+        </div>
+        <div data-stagger className="mt-12 grid grid-cols-2 gap-4 lg:grid-cols-4">
+          {VALUES.map((v) => (
+            <div key={v.title} className="rounded-2xl border border-navy-100 bg-white p-6 text-center transition-shadow duration-500 hover:shadow-lg">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-accent-100 text-accent-600">
                 <v.icon className="h-5 w-5" />
               </div>
               <h3 className="mt-4 font-bold text-navy-900">{v.title}</h3>
-              <p className="mt-2 text-sm text-navy-500">{v.desc}</p>
+              <p className="mt-1 text-sm text-navy-500">{v.desc}</p>
             </div>
           ))}
         </div>
       </section>
 
       <section className="bg-navy-50 py-20">
-        <div className="mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8">
-          <h2 className="text-2xl font-bold text-navy-900">Commissioned & compliant</h2>
-          <p className="mt-4 leading-relaxed text-navy-500">
-            Notar-E Services operates in full compliance with Michigan notary law, including statutory
-            fee limits under MCL 55.287. We are transparent about what is a notarial fee and what is a
-            separately-disclosed service charge — always. Notar-E Services is not a law firm and does
-            not provide legal advice.
-          </p>
-          <LinkButton href="/book" size="lg" className="mt-8">Book an Appointment</LinkButton>
+        <div className="mx-auto grid max-w-5xl items-center gap-8 px-4 sm:px-6 md:grid-cols-[1.2fr_1fr] lg:px-8">
+          <div data-reveal>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent-600">Commissioned &amp; compliant</p>
+            <h2 className="mt-3 text-3xl font-bold tracking-tight text-navy-900">Clear about every dollar.</h2>
+            <p className="mt-4 text-navy-500">
+              Michigan limits the notarial-act fee to $10 per act (MCL 55.285). We show it separately from every other charge.
+              We&apos;re not a law firm and never give legal advice.
+            </p>
+          </div>
+          <div data-reveal className="flex flex-col gap-3 sm:flex-row md:flex-col">
+            <LinkButton href="/book" size="lg" className="w-full">
+              Book a Notary <ArrowRight className="h-4 w-4" />
+            </LinkButton>
+            <LinkButton href="/careers" variant="outline" size="lg" className="w-full bg-white">
+              <Users className="h-4 w-4" /> Join the Notar-E Network
+            </LinkButton>
+          </div>
         </div>
       </section>
-    </div>
+    </SiteMotion>
   );
 }

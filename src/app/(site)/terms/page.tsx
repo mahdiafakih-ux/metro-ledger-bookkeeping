@@ -32,10 +32,28 @@ export default function TermsPage() {
           <h2 className="text-lg font-bold text-navy-900">3. Pricing & Fees</h2>
           <p className="mt-2 leading-relaxed">
             The statutory fee for a notarial act is limited to $10 per act under Michigan law (MCL
-            55.287). Any additional charges are for other lawful services and are disclosed to you
-            before your appointment is confirmed. Business plan pricing, appointment allowances, and
-            overage rates are set forth at time of enrollment and may be updated by Notar-E Services
+            55.285). Any additional charges are for other lawful services and are disclosed to you
+            before your appointment is confirmed. Any travel fee for a mobile appointment is agreed
+            before we travel.
+          </p>
+          <p className="mt-2 leading-relaxed">
+            <strong>Business plans.</strong> Business10 and Business30 are monthly subscriptions that
+            include 10 and 30 notarizations per billing month, respectively. Each notarization beyond
+            the included amount is billed at the additional-notarization rate shown at enrollment
+            ($75 each at the time of writing). Unused notarizations do not roll over. Plan changes take
+            effect immediately and are prorated by our payment processor. Plan pricing may be updated
             with notice.
+          </p>
+        </section>
+        <section>
+          <h2 className="text-lg font-bold text-navy-900">3a. Remote Online Notarization</h2>
+          <p className="mt-2 leading-relaxed">
+            Remote online notarization is available only for eligible documents and transactions, as
+            permitted by Michigan law and the requirements of the receiving party. Sessions are
+            conducted through BlueNotary, a third-party platform subject to its own terms and privacy
+            policy. Notar-E Services is independently owned and is not affiliated with or endorsed by
+            BlueNotary. We may decline or reschedule a remote session if identity cannot be verified
+            or a document is not eligible.
           </p>
         </section>
         <section>

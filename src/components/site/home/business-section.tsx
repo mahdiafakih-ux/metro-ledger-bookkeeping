@@ -1,19 +1,23 @@
 import { ArrowRight, CheckCircle2 } from "lucide-react";
 import { LinkButton } from "@/components/ui/button";
 import { SectionHeading } from "@/components/site/section-heading";
+import { formatCents } from "@/lib/money";
+import { SUBSCRIPTION_PLAN_LIST } from "@/lib/plans";
 
 const BENEFITS = [
-  "Priority scheduling",
-  "Centralized monthly billing",
-  "Dedicated point of contact",
-  "Usage tracking & reporting",
-  "Recurring service plans",
+  "One monthly invoice",
+  "Live usage in your client portal",
+  "Mobile + eligible online notarization",
+  "Predictable base price",
+  "Switch plans anytime",
 ];
 
-const PLAN_ROWS = [
-  { label: "Business 20", desc: "Up to 20 appointments / month", price: "$2,500/mo" },
-  { label: "Business Unlimited", desc: "Unlimited qualifying appointments*", price: "$4,000/mo" },
-];
+const money = (c: number) => formatCents(c, { showCents: false });
+const PLAN_ROWS = SUBSCRIPTION_PLAN_LIST.map((p) => ({
+  label: p.name,
+  desc: `${p.includedNotarizations} notarizations included · ${money(p.overagePerNotarizationCents)} each after`,
+  price: `${money(p.monthlyCents)}/mo`,
+}));
 
 export function BusinessSection() {
   return (
@@ -32,7 +36,7 @@ export function BusinessSection() {
               light
               eyebrow="For Businesses"
               title="Your On-Demand Notary Partner"
-              description="Title companies, law firms, real estate teams, and dealerships trust Notar-E Services so they never have to search for a notary again."
+              description="Stop searching for a notary every time. Pick a monthly plan."
             />
           </div>
           <ul data-biz-list className="relative mt-9 space-y-1">
@@ -84,7 +88,7 @@ export function BusinessSection() {
               ))}
             </div>
             <p className="mt-6 text-[11px] text-navy-400">
-              *Subject to fair-use business terms. Statutory notarial fees always disclosed separately.
+              Each notarization includes the $10 Michigan statutory notarial fee (MCL 55.285), itemized on every invoice.
             </p>
           </div>
         </div>

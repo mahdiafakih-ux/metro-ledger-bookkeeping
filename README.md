@@ -112,8 +112,8 @@ STRIPE_SECRET_KEY="sk_test_..."
 STRIPE_PUBLISHABLE_KEY="pk_test_..."
 STRIPE_WEBHOOK_SECRET="whsec_..."
 STRIPE_PRICE_INDIVIDUAL="price_..."
+STRIPE_PRICE_BUSINESS10="price_..."
 STRIPE_PRICE_BUSINESS30="price_..."
-STRIPE_PRICE_BUSINESS_UNLIMITED="price_..."
 
 # Site
 NEXT_PUBLIC_SITE_URL="http://localhost:3000"
@@ -125,12 +125,12 @@ RESEND_API_KEY="re_..."
 ## 💳 Stripe Setup
 
 ### 1. Create Products
-In Stripe Dashboard, create 3 products:
-- **Individual**: $125 one-time
-- **Business 30**: $2,500/month
-- **Business Unlimited**: $4,000/month
+In Stripe Dashboard, create 3 prices (see `docs/PLANS_AND_BILLING.md`):
+- **Individual**: $125 one-time → `STRIPE_PRICE_INDIVIDUAL`
+- **Business10**: $1,000/month recurring → `STRIPE_PRICE_BUSINESS10`
+- **Business30**: $3,000/month recurring → `STRIPE_PRICE_BUSINESS30`
 
-Copy price IDs to `.env.local`
+Copy price IDs to `.env.local` (and Vercel). Business Unlimited is discontinued.
 
 ### 2. Webhook Configuration
 1. Stripe Dashboard → Developers → Webhooks
@@ -190,11 +190,10 @@ After MVP launch:
 
 ## 💰 Pricing Configuration
 
-All pricing is editable from `/admin/settings` without code changes:
-- Individual appointment rate
-- Business 30 monthly price & included appointments
-- Business Unlimited monthly price
-- Overage rate for Business 30
+- **Business10 / Business30** numbers (price, included notarizations, $75 overage)
+  live in one place: `src/lib/plans.ts`. They must match your Stripe prices, so
+  they are read-only in admin; plan names, descriptions and bullets are editable.
+- **Individual** pricing is fully editable from `/admin/settings`.
 
 ### Michigan Compliance
 - Statutory notary fee: $10 max
@@ -210,8 +209,9 @@ All pricing is editable from `/admin/settings` without code changes:
 
 ### Revenue Models
 1. Individual: $125 per appointment
-2. Business 30: $2,500/mo (30 incl., $50 each additional)
-3. Business Unlimited: $4,000/mo (unlimited)
+2. Business10: $1,000/mo (10 notarizations incl., $75 each additional)
+3. Business30: $3,000/mo (30 notarizations incl., $75 each additional)
+4. Business Unlimited: discontinued (legacy records only)
 
 ## 🐛 Troubleshooting
 

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db";
-import { getPortalAccount } from "@/lib/portal/account";
+import { getPortalAccount, isSubscriptionKind } from "@/lib/portal/account";
 import { getPreferredNotaries, getWorkedWithNotaries } from "@/lib/portal/queries";
 import { getBusinessSettings } from "@/lib/settings";
 import { addDaysISO, dateOnlyToUtc, detroitTodayISO } from "@/lib/tz";
@@ -37,7 +37,7 @@ export default async function RequestPage({ searchParams }: { searchParams: Prom
   const initialNotaryId = sp.notary && options.some((o) => o.id === sp.notary) ? sp.notary : "";
 
   const underSubscription =
-    (account.plan.kind === "business30" || account.plan.kind === "unlimited") &&
+    isSubscriptionKind(account.plan.kind) &&
     ["", "active", "past_due", "trialing"].includes(account.plan.status);
 
   return (

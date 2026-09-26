@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Bell, CalendarClock, AlertTriangle, PartyPopper, RefreshCw, CalendarPlus, CircleDot } from "lucide-react";
+import { Bell, Briefcase, CalendarClock, AlertTriangle, PartyPopper, RefreshCw, CalendarPlus, CircleDot } from "lucide-react";
 import { formatDateTime } from "@/lib/utils";
 import { markAllNotificationsRead } from "@/lib/actions/notifications";
 
@@ -23,6 +23,7 @@ const ICONS: Record<string, typeof Bell> = {
   goal_milestone: PartyPopper,
   renewal: RefreshCw,
   new_booking: CalendarPlus,
+  career_application: Briefcase,
 };
 
 export function NotificationsMenu({ notifications, unreadCount }: { notifications: NotificationView[]; unreadCount: number }) {

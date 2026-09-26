@@ -8,6 +8,7 @@ import { ClientForm } from "@/components/admin/client-form";
 import { formatCents } from "@/lib/money";
 import { LEAD_STATUS_LABELS } from "@/lib/constants";
 import { formatDate, formatDateTime, titleCase, telHref } from "@/lib/utils";
+import { isSubscriptionPlanKey, planDisplayName } from "@/lib/plans";
 
 export default async function ClientDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -68,8 +69,8 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <p className="text-xs font-semibold uppercase text-navy-400">Current Plan</p>
-                <p className="mt-1 text-lg font-bold text-navy-900 capitalize">
-                  {client.currentPlanKey.replace(/_/g, " ")}
+                <p className="mt-1 text-lg font-bold text-navy-900">
+                  {planDisplayName(client.currentPlanKey)}
                 </p>
               </div>
               <div>
@@ -98,11 +99,11 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
                   </p>
                 </div>
               )}
-              {client.currentPlanKey === "business30" && (
+              {isSubscriptionPlanKey(client.currentPlanKey) && (
                 <div>
                   <p className="text-xs font-semibold uppercase text-navy-400">Monthly Usage</p>
                   <p className="mt-1 text-lg font-bold text-navy-900">
-                    {client.monthlyUsageCount} appointments
+                    {client.monthlyUsageCount} notarizations
                   </p>
                 </div>
               )}

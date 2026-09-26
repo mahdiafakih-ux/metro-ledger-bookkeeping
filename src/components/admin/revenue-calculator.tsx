@@ -7,13 +7,20 @@ import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/form";
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
 import { saveScenario, deleteScenario, listScenarios, type ScenarioInputs } from "@/lib/actions/scenarios";
+import { SUBSCRIPTION_PLANS } from "@/lib/plans";
 
-const PRICES = { individual: 125, business30: 2500, unlimited: 4000, additional: 50 };
+// Business prices come from the plan catalog (same source as Stripe billing).
+const PRICES = {
+  individual: 125,
+  business10: SUBSCRIPTION_PLANS.business10.monthlyCents / 100,
+  business30: SUBSCRIPTION_PLANS.business30.monthlyCents / 100,
+  additional: SUBSCRIPTION_PLANS.business10.overagePerNotarizationCents / 100,
+};
 
 const PRESETS: Record<string, ScenarioInputs> = {
-  Conservative: { individualAppointments: 10, business30Clients: 1, unlimitedClients: 0, additionalAppointments: 0, customRevenueDollars: 0, expensesDollars: 300 },
-  Target: { individualAppointments: 16, business30Clients: 2, unlimitedClients: 1, additionalAppointments: 5, customRevenueDollars: 0, expensesDollars: 450 },
-  Aggressive: { individualAppointments: 25, business30Clients: 4, unlimitedClients: 2, additionalAppointments: 15, customRevenueDollars: 0, expensesDollars: 650 },
+  Conservative: { individualAppointments: 10, business10Clients: 1, business30Clients: 0, additionalNotarizations: 0, customRevenueDollars: 0, expensesDollars: 300 },
+  Target: { individualAppointments: 16, business10Clients: 2, business30Clients: 1, additionalNotarizations: 5, customRevenueDollars: 0, expensesDollars: 450 },
+  Aggressive: { individualAppointments: 25, business10Clients: 3, business30Clients: 2, additionalNotarizations: 15, customRevenueDollars: 0, expensesDollars: 650 },
 };
 
 export function RevenueCalculator({ remainingGoalCents }: { remainingGoalCents: number }) {
@@ -29,17 +36,18 @@ export function RevenueCalculator({ remainingGoalCents }: { remainingGoalCents: 
   const results = useMemo(() => {
     const monthlyRevenue =
       inputs.individualAppointments * PRICES.individual +
+      inputs.business10Clients * PRICES.business10 +
       inputs.business30Clients * PRICES.business30 +
-      inputs.unlimitedClients * PRICES.unlimited +
-      inputs.additionalAppointments * PRICES.additional +
+      inputs.additionalNotarizations * PRICES.additional +
       inputs.customRevenueDollars;
     const annualizedRevenue = monthlyRevenue * 12;
     const profit = monthlyRevenue - inputs.expensesDollars;
     const remainingGoalDollars = remainingGoalCents / 100;
     const monthsToCloseGap = monthlyRevenue > 0 ? remainingGoalDollars / monthlyRevenue : Infinity;
+    const additionalBusiness10Needed = Math.max(0, Math.ceil(remainingGoalDollars / PRICES.business10));
     const additionalBusiness30Needed = Math.max(0, Math.ceil(remainingGoalDollars / PRICES.business30));
     const additionalIndividualNeeded = Math.max(0, Math.ceil(remainingGoalDollars / PRICES.individual));
-    return { monthlyRevenue, annualizedRevenue, profit, remainingGoalDollars, monthsToCloseGap, additionalBusiness30Needed, additionalIndividualNeeded };
+    return { monthlyRevenue, annualizedRevenue, profit, remainingGoalDollars, monthsToCloseGap, additionalBusiness10Needed, additionalBusiness30Needed, additionalIndividualNeeded };
   }, [inputs, remainingGoalCents]);
 
   function set<K extends keyof ScenarioInputs>(key: K, value: number) {
@@ -74,16 +82,16 @@ export function RevenueCalculator({ remainingGoalCents }: { remainingGoalCents: 
               <Input type="number" min={0} value={inputs.individualAppointments} onChange={(e) => set("individualAppointments", Number(e.target.value))} />
             </div>
             <div>
-              <Label>Business 30 Clients ($2,500/mo ea)</Label>
+              <Label>Business10 Clients (${PRICES.business10.toLocaleString()}/mo ea)</Label>
+              <Input type="number" min={0} value={inputs.business10Clients} onChange={(e) => set("business10Clients", Number(e.target.value))} />
+            </div>
+            <div>
+              <Label>Business30 Clients (${PRICES.business30.toLocaleString()}/mo ea)</Label>
               <Input type="number" min={0} value={inputs.business30Clients} onChange={(e) => set("business30Clients", Number(e.target.value))} />
             </div>
             <div>
-              <Label>Unlimited Clients ($4,000/mo ea)</Label>
-              <Input type="number" min={0} value={inputs.unlimitedClients} onChange={(e) => set("unlimitedClients", Number(e.target.value))} />
-            </div>
-            <div>
-              <Label>Additional Appointments ($50 ea)</Label>
-              <Input type="number" min={0} value={inputs.additionalAppointments} onChange={(e) => set("additionalAppointments", Number(e.target.value))} />
+              <Label>Additional Notarizations (${PRICES.additional} ea)</Label>
+              <Input type="number" min={0} value={inputs.additionalNotarizations} onChange={(e) => set("additionalNotarizations", Number(e.target.value))} />
             </div>
             <div>
               <Label>Custom Revenue ($)</Label>
@@ -135,7 +143,8 @@ export function RevenueCalculator({ remainingGoalCents }: { remainingGoalCents: 
             label="Time to Close Gap at This Pace"
             value={Number.isFinite(results.monthsToCloseGap) ? `${results.monthsToCloseGap.toFixed(1)} months` : "—"}
           />
-          <ResultRow label="Or ~ Additional Business 30 Clients Needed" value={String(results.additionalBusiness30Needed)} />
+          <ResultRow label="Or ~ Business10 Client-Months Needed" value={String(results.additionalBusiness10Needed)} />
+          <ResultRow label="Or ~ Business30 Client-Months Needed" value={String(results.additionalBusiness30Needed)} />
           <ResultRow label="Or ~ Additional Individual Appointments Needed" value={String(results.additionalIndividualNeeded)} />
         </CardBody>
       </Card>

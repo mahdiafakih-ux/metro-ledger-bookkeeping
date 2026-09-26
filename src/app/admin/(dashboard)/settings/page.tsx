@@ -7,6 +7,7 @@ import { BusinessInfoForm, HomepageWordingForm, GoalSettingsForm } from "@/compo
 import { AvailabilityForm, BlackoutDatesManager } from "@/components/admin/settings/availability-form";
 import { ScorecardTargetsForm } from "@/components/admin/settings/scorecard-targets-form";
 import { PricingPlanEditor } from "@/components/admin/settings/pricing-editor";
+import { isLegacyPlanKey } from "@/lib/plans";
 import { DemoDataSection } from "@/components/admin/settings/demo-data-section";
 
 const DATA_EXPORTS = [
@@ -132,7 +133,12 @@ export default async function SettingsPage() {
       <Card>
         <CardHeader><CardTitle>Pricing Plans</CardTitle></CardHeader>
         <CardBody className="space-y-4">
-          {pricingPlans.map((plan: any) => (
+          <p className="text-xs text-navy-400">
+            Business10 / Business30 prices, included notarizations and the $75 overage rate are fixed by the plan
+            catalog and your Stripe prices, so the site always shows what customers are billed. Their names,
+            descriptions and feature bullets are editable here.
+          </p>
+          {pricingPlans.filter((plan) => !isLegacyPlanKey(plan.key) && plan.key !== "business20").map((plan) => (
             <PricingPlanEditor
               key={plan.id}
               plan={{
@@ -145,11 +151,18 @@ export default async function SettingsPage() {
                 appointmentsIncluded: plan.appointmentsIncluded,
                 overageFeeDollars: plan.overageFeeCents != null ? plan.overageFeeCents / 100 : null,
                 description: plan.description,
+                features: (() => { try { return JSON.parse(plan.features) as string[]; } catch { return []; } })(),
                 highlight: plan.highlight,
                 isActive: plan.isActive,
               }}
             />
           ))}
+          {pricingPlans.some((plan) => isLegacyPlanKey(plan.key)) && (
+            <p className="rounded-xl bg-navy-50 p-4 text-xs text-navy-500">
+              <strong>Business Unlimited</strong> is discontinued and hidden everywhere public. Its record is kept (inactive)
+              so past subscriptions, invoices and revenue still display correctly.
+            </p>
+          )}
         </CardBody>
       </Card>
     </div>

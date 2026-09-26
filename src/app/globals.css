@@ -395,3 +395,94 @@ body {
     transform: none;
   }
 }
+
+/* ============================================================
+   Shared public-site polish
+   ============================================================ */
+
+html {
+  scroll-behavior: smooth;
+}
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* Gradient headline accent (static; no animation). */
+.text-gradient {
+  background: linear-gradient(100deg, #c8d7ff 0%, #6690ff 55%, #3b6bff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.text-gradient-dark {
+  background: linear-gradient(100deg, #2354eb 0%, #3b6bff 50%, #6690ff 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Range slider (plan estimator). --fill is set inline from the value. */
+.range-accent {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--color-accent-500) var(--fill, 50%), var(--color-navy-100) var(--fill, 50%));
+  outline: none;
+  cursor: pointer;
+}
+.range-accent::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: #fff;
+  border: 3px solid var(--color-accent-500);
+  box-shadow: 0 6px 18px -4px rgba(59, 107, 255, 0.6);
+  transition: transform 0.2s ease;
+}
+.range-accent::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: #fff;
+  border: 3px solid var(--color-accent-500);
+  box-shadow: 0 6px 18px -4px rgba(59, 107, 255, 0.6);
+}
+.range-accent:active::-webkit-slider-thumb {
+  transform: scale(1.12);
+}
+.range-accent:focus-visible {
+  box-shadow: 0 0 0 4px rgba(59, 107, 255, 0.25);
+}
+
+/* Soft "live" pulse used on the online-session mock (CSS fallback when JS
+   motion isn't running; GSAP takes over on desktop). */
+@media (prefers-reduced-motion: no-preference) {
+  .live-dot {
+    animation: live-dot 1.6s ease-in-out infinite;
+  }
+}
+@keyframes live-dot {
+  50% {
+    opacity: 0.35;
+  }
+}
+
+/* Page hero used by inner pages. */
+.page-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background: var(--color-navy-950);
+}
