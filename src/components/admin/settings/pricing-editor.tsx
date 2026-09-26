@@ -51,7 +51,14 @@ export function PricingPlanEditor({ plan }: { plan: PlanRow }) {
   return (
     <form onSubmit={handleSubmit} className="space-y-4 rounded-2xl border border-navy-100 p-5">
       <div className="flex items-center justify-between">
-        <h3 className="font-bold text-navy-900">{plan.key}</h3>
+        <div className="flex items-center gap-2">
+          <h3 className="font-bold text-navy-900">{plan.key}</h3>
+          {!plan.isActive && (
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+              Discontinued — not shown to customers
+            </span>
+          )}
+        </div>
         <label className="flex items-center gap-2 text-xs font-medium text-navy-500">
           <input type="checkbox" checked={form.highlight} onChange={(e) => setForm({ ...form, highlight: e.target.checked })} className="h-3.5 w-3.5 rounded border-navy-300" />
           Most Popular
