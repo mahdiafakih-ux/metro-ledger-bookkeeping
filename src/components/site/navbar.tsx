@@ -9,12 +9,13 @@ import { LinkButton } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const LINKS = [
-  { href: "/services", label: "Services" },
-  { href: "/business-solutions", label: "Business Solutions" },
-  { href: "/pricing", label: "Pricing" },
-  { href: "/about", label: "About" },
-  { href: "/faq", label: "FAQ" },
-  { href: "/contact", label: "Contact" },
+  { href: "/services", label: "Services", highlight: false },
+  { href: "/book", label: "Notarize Online", highlight: true },
+  { href: "/business-solutions", label: "Business Solutions", highlight: false },
+  { href: "/pricing", label: "Pricing", highlight: false },
+  { href: "/about", label: "About", highlight: false },
+  { href: "/faq", label: "FAQ", highlight: false },
+  { href: "/contact", label: "Contact", highlight: false },
 ];
 
 export function Navbar() {
@@ -34,8 +35,12 @@ export function Navbar() {
               key={link.href}
               href={link.href}
               className={cn(
-                "rounded-lg px-3 py-2 text-sm font-medium text-navy-600 transition-colors hover:bg-navy-50 hover:text-navy-900",
-                pathname === link.href && "bg-navy-50 text-navy-900"
+                "rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                link.highlight
+                  ? "bg-accent-100 text-accent-700 hover:bg-accent-200 hover:text-accent-800"
+                  : "text-navy-600 hover:bg-navy-50 hover:text-navy-900",
+                pathname === link.href && !link.highlight && "bg-navy-50 text-navy-900",
+                pathname === link.href && link.highlight && "bg-accent-200 text-accent-800"
               )}
             >
               {link.label}
@@ -48,7 +53,7 @@ export function Navbar() {
             Client Login
           </Link>
           <LinkButton href="/book" size="md">
-            Book an Appointment
+            Book a Notary
           </LinkButton>
         </div>
 
@@ -69,7 +74,12 @@ export function Navbar() {
                 key={link.href}
                 href={link.href}
                 onClick={() => setOpen(false)}
-                className="rounded-lg px-3 py-2.5 text-sm font-medium text-navy-700 hover:bg-navy-50"
+                className={cn(
+                  "rounded-lg px-3 py-2.5 text-sm font-medium",
+                  link.highlight
+                    ? "bg-accent-100 text-accent-700 hover:bg-accent-200"
+                    : "text-navy-700 hover:bg-navy-50"
+                )}
               >
                 {link.label}
               </Link>
@@ -83,7 +93,7 @@ export function Navbar() {
             </Link>
           </nav>
           <LinkButton href="/book" size="md" className="mt-3 w-full">
-            Book an Appointment
+            Book a Notary
           </LinkButton>
         </div>
       )}
