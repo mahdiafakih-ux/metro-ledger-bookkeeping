@@ -14,9 +14,28 @@ Michigan split: each notarization includes the $10 statutory notarial fee (MCL 5
 separately disclosed mobile/remote service, scheduling and administrative services. Overage invoices
 itemize `$10 statutory` + `$65 service` per extra notarization.
 
-> **Heads-up on the math:** with $75 overage on both plans, Business10 costs less than Business30 at
-> every volume (at 30 notarizations it's $2,500 vs $3,000, and it stays $500 lower above that). The site
-> never claims Business30 saves money; the estimator computes this live from `plans.ts`.
+## Business10 eligibility cap (30 notarizations/month)
+
+Business10 is only available to customers with **up to 30 notarizations a month**
+(`maxMonthlyNotarizations: 30` in `plans.ts`). Prices, included quantities and the $75 overage are
+unchanged.
+
+- **1–30 a month:** Business10 can be shown, recommended and chosen.
+- **31+ a month:** Business10 is not selectable or recommended anywhere. Business30 is the applicable plan.
+
+**Where it's enforced (server-side, not just the UI):**
+`src/lib/plan-eligibility.ts` → `checkPlanEligibility()` runs in `/api/checkout`,
+`/api/subscription/change`, the admin "Start a plan" and "Change plan" actions, and inside
+`changeBusinessSubscriptionPlan()` as a backstop. A blocked request gets HTTP 422 with the reason.
+
+**Which volume counts:** the highest of the business's `expectedMonthlyVolume`, `monthlyUsage` (admin
+"Monthly usage"), `monthlyUsageCount` (metered this billing period) and any volume the customer declares
+at checkout. A customer can't get Business10 by under-declaring. A higher declared volume is saved to
+`expectedMonthlyVolume`.
+
+**Existing Business10 subscribers above 30:** they are not switched automatically, because that changes
+what Stripe bills. The admin Subscription & Usage panel shows a warning, and Business10 can't be
+re-selected; move them to Business30 with Change plan.
 
 ## How usage works
 
@@ -56,8 +75,8 @@ itemize `$10 statutory` + `$65 service` per extra notarization.
    - `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`
    - `invoice.paid` (new)
 5. **Customer portal:** Settings → Billing → Customer portal. Allow payment-method updates, invoice
-   history and cancellation. Turn **off** plan switching there, or add only the Business10/Business30
-   prices. The app handles switching itself.
+   history and cancellation. Turn plan switching **off** there. The app handles switching itself, and
+   Stripe's portal can't enforce the Business10 30-notarization cap.
 
 ## Deploy order (production)
 

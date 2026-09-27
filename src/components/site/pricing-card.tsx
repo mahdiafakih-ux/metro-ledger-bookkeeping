@@ -2,6 +2,7 @@ import { ArrowRight, Check, ChevronDown, ShieldCheck } from "lucide-react";
 import { formatCents } from "@/lib/money";
 import { LinkButton } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { getSubscriptionPlan, planCapLabel } from "@/lib/plans";
 
 export interface PricingPlanView {
   key: string;
@@ -40,6 +41,8 @@ export function PricingCard({ plan, ctaHref, ctaLabel }: { plan: PricingPlanView
   const statutoryIncluded = plan.statutoryFeeCents * (monthly ? included : plan.actsIncluded);
   const serviceCents = plan.totalCents - statutoryIncluded;
   const tag = TAGS[plan.key];
+  const catalogPlan = getSubscriptionPlan(plan.key);
+  const capNote = catalogPlan ? planCapLabel(catalogPlan) : null;
 
   return (
     <div
@@ -88,6 +91,10 @@ export function PricingCard({ plan, ctaHref, ctaLabel }: { plan: PricingPlanView
           </p>
         </div>
       </div>
+
+      {capNote && (
+        <p className={cn("relative mt-3 text-xs font-medium", dark ? "text-navy-300" : "text-navy-500")}>{capNote}</p>
+      )}
 
       <ul className="relative mt-6 flex-1 space-y-2.5">
         {plan.features.slice(0, 5).map((f) => (

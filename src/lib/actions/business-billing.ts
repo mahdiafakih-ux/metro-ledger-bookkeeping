@@ -12,6 +12,7 @@ import {
   recomputeCurrentPeriodUsage,
 } from "@/lib/subscriptions";
 import { isSubscriptionPlanKey } from "@/lib/plans";
+import { checkPlanEligibility } from "@/lib/plan-eligibility";
 
 type Result<T = object> = ({ success: true } & T) | { success: false; error: string };
 
@@ -79,6 +80,8 @@ export async function createBusinessCheckoutLink(businessId: string, planKey: st
   if (business.stripeSubscriptionId && ["active", "past_due", "incomplete"].includes(business.subscriptionStatus)) {
     return { success: false, error: "This business already has a subscription — use Change Plan." };
   }
+  const eligibility = await checkPlanEligibility(businessId, planKey);
+  if (!eligibility.ok) return { success: false, error: eligibility.error };
   const email = business.billingContactEmail || business.email;
   if (!email) return { success: false, error: "Add a billing or contact email to this business first." };
 
@@ -103,6 +106,8 @@ export async function changeBusinessPlanAdmin(businessId: string, planKey: strin
   if (!isSubscriptionPlanKey(planKey)) return { success: false, error: "Choose Business10 or Business30." };
   const business = await prisma.business.findUnique({ where: { id: businessId } });
   if (!business?.stripeSubscriptionId) return { success: false, error: "No active subscription to change." };
+  const eligibility = await checkPlanEligibility(businessId, planKey);
+  if (!eligibility.ok) return { success: false, error: eligibility.error };
   const result = await changeBusinessSubscriptionPlan({ stripeSubscriptionId: business.stripeSubscriptionId, newPlanKey: planKey, businessId });
   if (!result.ok) return { success: false, error: result.error };
   refresh(businessId);

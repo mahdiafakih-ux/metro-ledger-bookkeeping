@@ -35,6 +35,12 @@ export interface SubscriptionPlan {
   monthlyCents: number;
   includedNotarizations: number;
   overagePerNotarizationCents: number;
+  /**
+   * Hard eligibility cap: the most notarizations per month a customer may
+   * have and still choose this plan. null = no cap. Above the cap the plan
+   * is not selectable or recommended anywhere (UI and server).
+   */
+  maxMonthlyNotarizations: number | null;
   /** Env var that must hold this plan's recurring monthly Stripe Price ID. */
   stripePriceEnv: string;
   status: "active";
@@ -48,6 +54,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlanKey, SubscriptionPlan> =
     monthlyCents: 100_000,
     includedNotarizations: 10,
     overagePerNotarizationCents: 7_500,
+    maxMonthlyNotarizations: 30,
     stripePriceEnv: "STRIPE_PRICE_BUSINESS10",
     status: "active",
   },
@@ -58,6 +65,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlanKey, SubscriptionPlan> =
     monthlyCents: 300_000,
     includedNotarizations: 30,
     overagePerNotarizationCents: 7_500,
+    maxMonthlyNotarizations: null,
     stripePriceEnv: "STRIPE_PRICE_BUSINESS30",
     status: "active",
   },
@@ -118,27 +126,46 @@ export function overageUnits(included: number, used: number): number {
   return Math.max(0, Math.floor(used) - included);
 }
 
-/** Cheapest active plan for a monthly volume (ties go to the smaller plan). */
-export function cheapestPlanFor(notarizations: number): SubscriptionPlan {
-  return SUBSCRIPTION_PLAN_LIST.reduce((best, p) =>
+/** Business10 is only available up to this many notarizations per month. */
+export const BUSINESS10_MAX_MONTHLY_NOTARIZATIONS = SUBSCRIPTION_PLANS.business10.maxMonthlyNotarizations as number;
+
+/** Whether a plan may be chosen for a given monthly notarization volume. */
+export function isPlanEligible(plan: SubscriptionPlan, notarizations: number): boolean {
+  const n = Math.max(0, Math.floor(notarizations));
+  return plan.maxMonthlyNotarizations == null || n <= plan.maxMonthlyNotarizations;
+}
+
+/** Plans a customer at this monthly volume may choose, smallest first. */
+export function eligiblePlansFor(notarizations: number): SubscriptionPlan[] {
+  return SUBSCRIPTION_PLAN_LIST.filter((p) => isPlanEligible(p, notarizations));
+}
+
+/**
+ * The plan to show as applicable/recommended at a monthly volume: the lowest
+ * monthly cost among ELIGIBLE plans (ties go to the smaller plan).
+ *   1–30 notarizations → Business10 · 31+ → Business30 (Business10 is capped at 30).
+ */
+export function applicablePlanFor(notarizations: number): SubscriptionPlan {
+  const eligible = eligiblePlansFor(notarizations);
+  return eligible.reduce((best, p) =>
     monthlyCostCents(p, notarizations) < monthlyCostCents(best, notarizations) ? p : best
   );
 }
 
+/** Short customer-facing note about a plan's cap, or null when uncapped. */
+export function planCapLabel(plan: SubscriptionPlan): string | null {
+  return plan.maxMonthlyNotarizations == null ? null : `${plan.name} available up to ${plan.maxMonthlyNotarizations} notarizations/month`;
+}
+
 /**
- * Smallest monthly volume at which Business30 costs less than Business10,
- * or Infinity if it never does. Computed, not hard-coded, so marketing copy
- * stays truthful if prices change.
- *
- * NOTE: with $75 overage on both plans, Business10 is cheaper at EVERY
- * volume (at 30: $2,500 vs $3,000; above 30 it stays $500 cheaper), so this
- * currently returns Infinity and no page may claim Business30 saves money.
+ * Why a plan can't be chosen at this volume, or null if it can.
+ * Used by every server path that starts or changes a subscription.
  */
-export function business30BreakEven(): number {
-  for (let n = 0; n <= 500; n++) {
-    if (monthlyCostCents(SUBSCRIPTION_PLANS.business30, n) < monthlyCostCents(SUBSCRIPTION_PLANS.business10, n)) return n;
-  }
-  return Infinity;
+export function planIneligibilityReason(planKey: SubscriptionPlanKey, notarizations: number): string | null {
+  const plan = SUBSCRIPTION_PLANS[planKey];
+  if (isPlanEligible(plan, notarizations)) return null;
+  const alt = applicablePlanFor(notarizations);
+  return `${planCapLabel(plan)}. At ${Math.floor(notarizations)} notarizations a month, ${alt.name} is the applicable plan.`;
 }
 
 /**

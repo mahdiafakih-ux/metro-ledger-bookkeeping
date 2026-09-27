@@ -3,21 +3,30 @@
 import { useId, useState } from "react";
 import { Calculator, Check } from "lucide-react";
 import { formatCents } from "@/lib/money";
-import { SUBSCRIPTION_PLAN_LIST, business30BreakEven, cheapestPlanFor, monthlyCostCents, overageUnits } from "@/lib/plans";
+import {
+  BUSINESS10_MAX_MONTHLY_NOTARIZATIONS,
+  SUBSCRIPTION_PLAN_LIST,
+  applicablePlanFor,
+  isPlanEligible,
+  monthlyCostCents,
+  overageUnits,
+  planCapLabel,
+} from "@/lib/plans";
 import { cn } from "@/lib/utils";
 
 const money = (c: number) => formatCents(c, { showCents: false });
 
 /**
  * Monthly-volume estimator for Business10 vs Business30. Pure arithmetic
- * from the plan catalog — no marketing claims: it shows both totals and
- * which is lower at the chosen volume, including where they cross over.
+ * from the plan catalog. Business10 is only available up to
+ * BUSINESS10_MAX_MONTHLY_NOTARIZATIONS a month: from 1 to that cap it can be
+ * shown as the applicable plan; above it, it is shown as unavailable and
+ * Business30 becomes the applicable plan.
  */
 export function PlanEstimator({ dark = false }: { dark?: boolean }) {
   const [volume, setVolume] = useState(15);
   const id = useId();
-  const best = cheapestPlanFor(volume);
-  const breakEven = business30BreakEven();
+  const applicable = applicablePlanFor(volume);
   const max = 60;
 
   return (
@@ -64,42 +73,61 @@ export function PlanEstimator({ dark = false }: { dark?: boolean }) {
 
       <div className="mt-6 grid gap-3 sm:grid-cols-2">
         {SUBSCRIPTION_PLAN_LIST.map((plan) => {
+          const eligible = isPlanEligible(plan, volume);
           const cost = monthlyCostCents(plan, volume);
           const extra = overageUnits(plan.includedNotarizations, volume);
-          const isBest = best.key === plan.key;
+          const isApplicable = applicable.key === plan.key;
           return (
             <div
               key={plan.key}
               aria-live="polite"
+              aria-disabled={!eligible}
+              data-plan={plan.key}
+              data-eligible={eligible}
               className={cn(
                 "relative rounded-2xl border p-4 transition-colors duration-300",
-                isBest
+                isApplicable
                   ? "border-accent-500 bg-accent-500/10"
                   : dark
                     ? "border-white/10 bg-white/5"
-                    : "border-navy-100 bg-navy-50/60"
+                    : "border-navy-100 bg-navy-50/60",
+                !eligible && "opacity-55"
               )}
             >
-              {isBest && (
+              {isApplicable && (
                 <span className="absolute -top-2.5 right-3 inline-flex items-center gap-1 rounded-full bg-accent-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
-                  <Check className="h-3 w-3" /> Lower cost
+                  <Check className="h-3 w-3" /> Your plan
                 </span>
               )}
               <p className={cn("text-sm font-semibold", dark ? "text-navy-200" : "text-navy-600")}>{plan.name}</p>
-              <p className={cn("mt-1 text-3xl font-extrabold tabular-nums tracking-tight", dark ? "text-white" : "text-navy-900")}>{money(cost)}</p>
-              <p className={cn("mt-1 text-xs", dark ? "text-navy-300" : "text-navy-500")}>
-                {money(plan.monthlyCents)} base{extra > 0 ? ` + ${extra} × ${money(plan.overagePerNotarizationCents)}` : ` · ${plan.includedNotarizations - volume} left over`}
-              </p>
+              {eligible ? (
+                <>
+                  <p className={cn("mt-1 text-3xl font-extrabold tabular-nums tracking-tight", dark ? "text-white" : "text-navy-900")}>{money(cost)}</p>
+                  <p className={cn("mt-1 text-xs", dark ? "text-navy-300" : "text-navy-500")}>
+                    {money(plan.monthlyCents)} base{extra > 0 ? ` + ${extra} × ${money(plan.overagePerNotarizationCents)}` : ` · ${plan.includedNotarizations - volume} left over`}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className={cn("mt-1 text-lg font-bold", dark ? "text-navy-300" : "text-navy-500")}>Not available</p>
+                  <p className={cn("mt-1 text-xs", dark ? "text-navy-300" : "text-navy-500")}>{planCapLabel(plan)}</p>
+                </>
+              )}
             </div>
           );
         })}
       </div>
 
       <p className={cn("mt-5 text-xs leading-relaxed", dark ? "text-navy-300" : "text-navy-500")}>
-        {Number.isFinite(breakEven) ? (
-          <>Business30 costs less from <strong>{breakEven}</strong> notarizations a month; below that, Business10 costs less.</>
+        {volume > BUSINESS10_MAX_MONTHLY_NOTARIZATIONS ? (
+          <>
+            Business10 is available up to <strong>{BUSINESS10_MAX_MONTHLY_NOTARIZATIONS}</strong> notarizations/month. At {volume} a month,{" "}
+            <strong>{applicable.name}</strong> is your plan.
+          </>
         ) : (
-          <>At current rates Business10 plus {money(SUBSCRIPTION_PLAN_LIST[0].overagePerNotarizationCents)} per extra notarization costs less at any volume. Business30 gives a fixed monthly bill up to {SUBSCRIPTION_PLAN_LIST[1].includedNotarizations} notarizations.</>
+          <>
+            Business10 is available up to <strong>{BUSINESS10_MAX_MONTHLY_NOTARIZATIONS}</strong> notarizations/month; above that, Business30 applies.
+          </>
         )}{" "}
         Estimates only; each notarization includes the $10 Michigan statutory fee.
       </p>

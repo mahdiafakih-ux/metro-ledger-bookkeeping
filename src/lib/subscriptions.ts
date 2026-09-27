@@ -11,6 +11,7 @@ import {
   planDisplayName,
   type SubscriptionPlanKey,
 } from "@/lib/plans";
+import { checkPlanEligibility } from "@/lib/plan-eligibility";
 import { runSerializable, syncBusinessUsage, syncBusinessUsageSafe } from "@/lib/usage";
 
 /**
@@ -190,6 +191,11 @@ export async function changeBusinessSubscriptionPlan(input: {
   newPlanKey: SubscriptionPlanKey;
   businessId: string;
 }): Promise<{ ok: true } | { ok: false; error: string }> {
+  // Backstop: callers check this too, but a plan switch must never bypass
+  // the eligibility caps (Business10: up to 30 notarizations/month).
+  const eligibility = await checkPlanEligibility(input.businessId, input.newPlanKey);
+  if (!eligibility.ok) return { ok: false, error: eligibility.error };
+
   const stripe = getStripeClient();
   if (!stripe) return { ok: false, error: "Stripe is not configured" };
   const priceId = getSubscriptionPriceId(input.newPlanKey);

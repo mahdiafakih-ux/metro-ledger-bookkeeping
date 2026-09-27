@@ -89,6 +89,7 @@ export default async function BusinessDetailPage({ params }: { params: Promise<{
         members={members.map((m) => ({ id: m.id, name: m.client.name, email: m.client.email, role: m.role }))}
         stripeReady={isStripeConfigured() && missingPriceEnv.length === 0}
         missingPriceEnv={missingPriceEnv}
+        monthlyVolume={Math.max(business.expectedMonthlyVolume, business.monthlyUsage, business.monthlyUsageCount)}
       />
 
       {(business.billingContactName || business.billingContactEmail) && (

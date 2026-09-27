@@ -40,7 +40,8 @@ export default function TermsPage() {
             <strong>Business plans.</strong> Business10 and Business30 are monthly subscriptions that
             include 10 and 30 notarizations per billing month, respectively. Each notarization beyond
             the included amount is billed at the additional-notarization rate shown at enrollment
-            ($75 each at the time of writing). Unused notarizations do not roll over. Plan changes take
+            ($75 each at the time of writing). Business10 is available only to customers with up to 30
+            notarizations per month; customers above 30 per month are on Business30. Unused notarizations do not roll over. Plan changes take
             effect immediately and are prorated by our payment processor. Plan pricing may be updated
             with notice.
           </p>

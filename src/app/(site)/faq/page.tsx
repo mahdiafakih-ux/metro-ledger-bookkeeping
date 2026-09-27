@@ -18,8 +18,8 @@ const FAQS = [
   { q: "What can you notarize?", a: "Most personal and business documents: real estate, affidavits, powers of attorney, vehicle, financial and estate paperwork. See Services." },
   { q: "Can you explain my document?", a: "No. We're not a law firm and can't give legal advice, explain a document, or choose the notarial act for you. Please ask an attorney or the requesting party." },
   { q: "Do you work with businesses?", a: "Yes — title, lending, legal, real estate, property management, dealerships, banks, healthcare and more." },
-  { q: "What are Business10 and Business30?", a: "Monthly plans. Business10 is $1,000/month with 10 notarizations included; Business30 is $3,000/month with 30 included. Each additional notarization is $75 on either plan." },
-  { q: "Can we switch plans?", a: "Yes. Owners and admins can move between Business10 and Business30 in the client portal. The change applies immediately and Stripe prorates the monthly charge. Notarizations already used that month keep the terms they were used under." },
+  { q: "What are Business10 and Business30?", a: "Monthly plans. Business10 is $1,000/month with 10 notarizations included; Business30 is $3,000/month with 30 included. Each additional notarization is $75 on either plan. Business10 is available up to 30 notarizations a month; above 30, Business30 is the applicable plan." },
+  { q: "Can we switch plans?", a: "Yes. Owners and admins can move between Business10 and Business30 in the client portal (Business10 is available up to 30 notarizations a month). The change applies immediately and Stripe prorates the monthly charge. Notarizations already used that month keep the terms they were used under." },
   { q: "How does business billing work?", a: "One monthly subscription charge, plus one invoice for any notarizations beyond your plan. Usage is visible in your client portal." },
   { q: "What is the statutory notarial fee?", a: "Michigan caps the fee for the notarial act itself at $10 per act (MCL 55.285). Anything above that pays for separate, disclosed services like travel, scheduling or administration." },
 ];

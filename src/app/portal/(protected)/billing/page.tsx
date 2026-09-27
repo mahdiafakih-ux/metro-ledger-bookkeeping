@@ -36,7 +36,14 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
     account.business && account.canViewBusiness
       ? await prisma.business.findUnique({
           where: { id: account.business.id },
-          select: { currentPlanKey: true, stripeSubscriptionId: true, subscriptionStatus: true },
+          select: {
+            currentPlanKey: true,
+            stripeSubscriptionId: true,
+            subscriptionStatus: true,
+            expectedMonthlyVolume: true,
+            monthlyUsage: true,
+            monthlyUsageCount: true,
+          },
         })
       : null;
   const hasActiveSubscription =
@@ -112,6 +119,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
                   businessId={account.business.id}
                   currentPlanKey={businessRow.currentPlanKey}
                   hasActiveSubscription={hasActiveSubscription}
+                  knownMonthlyVolume={Math.max(businessRow.expectedMonthlyVolume, businessRow.monthlyUsage, businessRow.monthlyUsageCount)}
                 />
               </div>
             </Panel>

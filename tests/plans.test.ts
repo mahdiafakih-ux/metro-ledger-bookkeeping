@@ -3,10 +3,13 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   SUBSCRIPTION_PLANS,
+  BUSINESS10_MAX_MONTHLY_NOTARIZATIONS,
   allocateOverage,
-  business30BreakEven,
-  cheapestPlanFor,
+  applicablePlanFor,
+  eligiblePlansFor,
   feeBreakdown,
+  isPlanEligible,
+  planIneligibilityReason,
   isSubscriptionPlanKey,
   monthlyCostCents,
   planDisplayName,
@@ -34,17 +37,32 @@ test("both plans charge $75 per additional notarization", () => {
   assert.equal(business30.overagePerNotarizationCents, 7_500);
 });
 
-test("estimator never claims the wrong plan is cheaper", () => {
-  // With $75 overage on both plans, Business10 is lower-cost at every volume:
-  // 30 → $2,500 vs $3,000; above 30 it stays exactly $500 lower.
-  assert.equal(business30BreakEven(), Infinity);
-  assert.equal(cheapestPlanFor(30).key, "business10");
-  assert.equal(monthlyCostCents(business10, 40) - monthlyCostCents(business30, 40), -50_000);
-  for (let n = 0; n <= 80; n++) {
-    const best = cheapestPlanFor(n);
-    const other = best.key === "business10" ? business30 : business10;
-    assert.ok(monthlyCostCents(best, n) <= monthlyCostCents(other, n), `n=${n}`);
-  }
+test("prices, allowances and overage are unchanged by the cap", () => {
+  assert.equal(business10.monthlyCents, 100_000);
+  assert.equal(business10.includedNotarizations, 10);
+  assert.equal(business30.monthlyCents, 300_000);
+  assert.equal(business30.includedNotarizations, 30);
+});
+
+test("Business10 is capped at 30 notarizations a month; Business30 is not", () => {
+  assert.equal(BUSINESS10_MAX_MONTHLY_NOTARIZATIONS, 30);
+  assert.equal(isPlanEligible(business10, 30), true);
+  assert.equal(isPlanEligible(business10, 31), false);
+  assert.equal(isPlanEligible(business30, 1), true);
+  assert.equal(isPlanEligible(business30, 500), true);
+  assert.deepEqual(eligiblePlansFor(31).map((p) => p.key), ["business30"]);
+});
+
+test("applicable plan: Business10 for 1–30, Business30 from 31", () => {
+  for (let n = 1; n <= 30; n++) assert.equal(applicablePlanFor(n).key, "business10", `n=${n}`);
+  for (let n = 31; n <= 120; n++) assert.equal(applicablePlanFor(n).key, "business30", `n=${n}`);
+});
+
+test("server-side reason blocks Business10 above the cap only", () => {
+  assert.equal(planIneligibilityReason("business10", 30), null);
+  assert.match(planIneligibilityReason("business10", 31) ?? "", /up to 30 notarizations\/month.*Business30/);
+  assert.equal(planIneligibilityReason("business30", 31), null);
+  assert.equal(planIneligibilityReason("business30", 5), null);
 });
 
 test("Michigan fee breakdown keeps statutory fee at $10/act", () => {

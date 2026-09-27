@@ -6,7 +6,15 @@ import { toast } from "sonner";
 import { Check, Info, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatCents } from "@/lib/money";
-import { SUBSCRIPTION_PLAN_LIST, monthlyCostCents, type SubscriptionPlanKey } from "@/lib/plans";
+import {
+  BUSINESS10_MAX_MONTHLY_NOTARIZATIONS,
+  SUBSCRIPTION_PLAN_LIST,
+  applicablePlanFor,
+  isPlanEligible,
+  monthlyCostCents,
+  planCapLabel,
+  type SubscriptionPlanKey,
+} from "@/lib/plans";
 import { cn } from "@/lib/utils";
 
 /**
@@ -14,21 +22,36 @@ import { cn } from "@/lib/utils";
  * Checkout when there is no subscription; switches plans (prorated) when
  * there is one. The $75 overage is disclosed on every card and must be
  * acknowledged before anything is charged.
+ *
+ * The customer states their typical monthly volume (pre-filled with the
+ * highest volume we already know). Business10 is only selectable up to
+ * BUSINESS10_MAX_MONTHLY_NOTARIZATIONS; the server enforces the same cap and
+ * never lets the volume go below what it already knows.
  */
 export function PlanPicker({
   businessId,
   currentPlanKey,
   hasActiveSubscription,
+  knownMonthlyVolume = 0,
 }: {
   businessId: string;
   currentPlanKey: string;
   hasActiveSubscription: boolean;
+  /** Highest monthly volume on record; the input can't go below it. */
+  knownMonthlyVolume?: number;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState<SubscriptionPlanKey | null>(null);
   const [ack, setAck] = useState(false);
+  const [volume, setVolume] = useState(Math.max(1, knownMonthlyVolume));
+  const applicable = applicablePlanFor(volume);
 
   async function choose(planKey: SubscriptionPlanKey) {
+    const plan = SUBSCRIPTION_PLAN_LIST.find((p) => p.key === planKey);
+    if (plan && !isPlanEligible(plan, volume)) {
+      toast.error(`${planCapLabel(plan)}.`);
+      return;
+    }
     if (!ack) {
       toast.error("Please confirm the overage terms first.");
       return;
@@ -38,7 +61,9 @@ export function PlanPicker({
       const res = await fetch(hasActiveSubscription ? "/api/subscription/change" : "/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(hasActiveSubscription ? { businessId, planKey } : { businessId, planType: planKey }),
+        body: JSON.stringify(
+          hasActiveSubscription ? { businessId, planKey, monthlyVolume: volume } : { businessId, planType: planKey, monthlyVolume: volume }
+        ),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
@@ -60,20 +85,46 @@ export function PlanPicker({
 
   return (
     <div className="space-y-4">
+      <label className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-navy-100 bg-white p-4 text-sm">
+        <span>
+          <span className="block font-semibold text-navy-900">Typical notarizations per month</span>
+          <span className="block text-xs text-navy-400">
+            Business10 is available up to {BUSINESS10_MAX_MONTHLY_NOTARIZATIONS} notarizations/month.
+          </span>
+        </span>
+        <input
+          type="number"
+          inputMode="numeric"
+          min={Math.max(1, knownMonthlyVolume)}
+          max={10000}
+          value={volume}
+          onChange={(e) => setVolume(Math.max(Math.max(1, knownMonthlyVolume), Math.floor(Number(e.target.value) || 0)))}
+          aria-label="Typical notarizations per month"
+          className="h-11 w-24 rounded-lg border border-navy-200 px-3 text-right text-base font-semibold tabular-nums text-navy-900"
+        />
+      </label>
+
       <div className="grid gap-4 sm:grid-cols-2">
         {SUBSCRIPTION_PLAN_LIST.map((plan) => {
           const current = hasActiveSubscription && currentPlanKey === plan.key;
+          const eligible = isPlanEligible(plan, volume);
+          const isApplicable = applicable.key === plan.key;
           return (
             <div
               key={plan.key}
               className={cn(
                 "flex flex-col rounded-2xl border p-5 transition-shadow",
-                current ? "border-accent-500 bg-accent-50 shadow-md shadow-accent-500/10" : "border-navy-100 bg-white hover:shadow-md"
+                current ? "border-accent-500 bg-accent-50 shadow-md shadow-accent-500/10" : "border-navy-100 bg-white hover:shadow-md",
+                !eligible && "opacity-60 hover:shadow-none"
               )}
             >
               <div className="flex items-baseline justify-between gap-2">
                 <p className="text-lg font-bold text-navy-900">{plan.name}</p>
-                {current && <span className="rounded-full bg-accent-500 px-2 py-0.5 text-[11px] font-bold uppercase text-white">Current</span>}
+                {current ? (
+                  <span className="rounded-full bg-accent-500 px-2 py-0.5 text-[11px] font-bold uppercase text-white">Current</span>
+                ) : isApplicable ? (
+                  <span className="rounded-full bg-accent-100 px-2 py-0.5 text-[11px] font-bold uppercase text-accent-700">Applicable plan</span>
+                ) : null}
               </div>
               <p className="mt-1 text-3xl font-extrabold tracking-tight text-navy-900">
                 {formatCents(plan.monthlyCents, { showCents: false })}
@@ -83,17 +134,27 @@ export function PlanPicker({
                 <li className="flex gap-2"><Check className="h-4 w-4 shrink-0 text-accent-600" /> {plan.includedNotarizations} notarizations included</li>
                 <li className="flex gap-2"><Check className="h-4 w-4 shrink-0 text-accent-600" /> {formatCents(plan.overagePerNotarizationCents, { showCents: false })} each after {plan.includedNotarizations}</li>
               </ul>
-              <p className="mt-3 text-xs text-navy-400">
-                e.g. {plan.includedNotarizations + 5} in a month = {formatCents(monthlyCostCents(plan, plan.includedNotarizations + 5), { showCents: false })}
-              </p>
+              {eligible ? (
+                <p className="mt-3 text-xs text-navy-400">
+                  At {volume} a month: {formatCents(monthlyCostCents(plan, volume), { showCents: false })}
+                </p>
+              ) : (
+                <p className="mt-3 text-xs font-medium text-warning-600">{planCapLabel(plan)}</p>
+              )}
               <Button
                 className="mt-5 w-full"
                 variant={current ? "subtle" : "primary"}
-                disabled={current || busy !== null}
+                disabled={current || !eligible || busy !== null}
                 onClick={() => choose(plan.key)}
               >
                 {busy === plan.key && <Loader2 className="h-4 w-4 animate-spin" />}
-                {current ? "Your plan" : hasActiveSubscription ? `Switch to ${plan.name}` : `Start ${plan.name}`}
+                {current
+                  ? "Your plan"
+                  : !eligible
+                    ? "Not available at this volume"
+                    : hasActiveSubscription
+                      ? `Switch to ${plan.name}`
+                      : `Start ${plan.name}`}
               </Button>
             </div>
           );

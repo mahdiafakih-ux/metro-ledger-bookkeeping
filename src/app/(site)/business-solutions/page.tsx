@@ -92,7 +92,10 @@ export default async function BusinessSolutionsPage() {
             <a key={p.key} href="#plans" className="group flex items-center justify-between gap-4 rounded-2xl px-5 py-4 transition-colors hover:bg-navy-50">
               <div>
                 <p className="text-sm font-bold text-navy-900">{p.name}</p>
-                <p className="text-xs text-navy-500">{p.includedNotarizations} included · {money(p.overagePerNotarizationCents)} after</p>
+                <p className="text-xs text-navy-500">
+                  {p.includedNotarizations} included · {money(p.overagePerNotarizationCents)} after
+                  {p.maxMonthlyNotarizations != null && ` · up to ${p.maxMonthlyNotarizations}/mo`}
+                </p>
               </div>
               <p className="text-2xl font-extrabold tracking-tight text-navy-900">
                 {money(p.monthlyCents)}
