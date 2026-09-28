@@ -6,11 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Input, Textarea, Label, Select } from "@/components/ui/form";
 import { submitLead } from "@/lib/actions/leads";
 
-export function ContactForm() {
+const ENTERPRISE_SERVICE = "Enterprise quote (50+ notarizations/month)";
+
+export function ContactForm({ defaultService }: { defaultService?: "enterprise" } = {}) {
+  const enterprise = defaultService === "enterprise";
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState("");
-  const [isBusinessLead, setIsBusinessLead] = useState(false);
+  const [isBusinessLead, setIsBusinessLead] = useState(enterprise);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -74,10 +77,11 @@ export function ContactForm() {
       </div>
       <div>
         <Label>Service Needed</Label>
-        <Select name="serviceNeeded" defaultValue="">
+        <Select name="serviceNeeded" defaultValue={enterprise ? ENTERPRISE_SERVICE : ""}>
           <option value="" disabled>Select a service</option>
           <option>Individual Notarization</option>
           <option>Business Recurring Service</option>
+          <option>{ENTERPRISE_SERVICE}</option>
           <option>Real Estate / Title</option>
           <option>Law Firm Services</option>
           <option>Other</option>
@@ -90,8 +94,9 @@ export function ContactForm() {
             <option value="" disabled>Select a range</option>
             <option>1-5</option>
             <option>6-15</option>
-            <option>16-20</option>
-            <option>20+</option>
+            <option>16-30</option>
+            <option>31-49</option>
+            <option>50+</option>
             <option>Unsure</option>
           </Select>
         </div>

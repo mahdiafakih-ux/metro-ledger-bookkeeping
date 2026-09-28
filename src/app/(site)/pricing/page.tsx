@@ -3,6 +3,7 @@ import { Check, Minus } from "lucide-react";
 import { SectionHeading } from "@/components/site/section-heading";
 import { PricingCard } from "@/components/site/pricing-card";
 import { PlanEstimator } from "@/components/site/plan-estimator";
+import { EnterpriseCallout } from "@/components/site/enterprise-callout";
 import { ComplianceNote } from "@/components/site/compliance-note";
 import { PageHero } from "@/components/site/page-hero";
 import { SiteMotion } from "@/components/site/motion";
@@ -15,9 +16,9 @@ import { formatCents } from "@/lib/money";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Pricing — Individual, Business10 & Business30",
+  title: "Pricing — Individual, Business10, Business30 & Enterprise",
   description:
-    "Transparent Michigan notary pricing: pay per appointment, or Business10 ($1,000/mo, 10 notarizations) and Business30 ($3,000/mo, 30 notarizations) with $75 per additional notarization. Statutory fees always itemized.",
+    "Transparent Michigan notary pricing: pay per appointment, Business10 ($1,250/mo, 10 notarizations) or Business30 ($3,000/mo, 30 notarizations) with $100 per additional notarization, or a custom Enterprise quote for 50+ a month. Statutory fees always itemized.",
   alternates: { canonical: "/pricing" },
 };
 
@@ -50,13 +51,16 @@ export default async function PricingPage() {
             </div>
           ))}
         </div>
+        <div data-reveal className="mx-auto mt-8 max-w-6xl">
+          <EnterpriseCallout />
+        </div>
         <ComplianceNote className="mx-auto mt-10 max-w-3xl" />
       </section>
 
       <section className="bg-navy-50 py-20">
         <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 sm:px-6 lg:grid-cols-2 lg:px-8">
           <div data-reveal>
-            <SectionHeading align="left" eyebrow="Business plans" title="Which plan fits?" description="Slide to your monthly volume. The math does the rest." />
+            <SectionHeading align="left" eyebrow="Business plans" title="Which plan fits?" description="Slide to your monthly volume. We'll show both totals and recommend the lower one — you can still pick either plan." />
           </div>
           <div data-reveal>
             <PlanEstimator />

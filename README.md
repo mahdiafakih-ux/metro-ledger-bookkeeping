@@ -126,8 +126,8 @@ RESEND_API_KEY="re_..."
 
 ### 1. Create Products
 In Stripe Dashboard, create 3 prices (see `docs/PLANS_AND_BILLING.md`):
-- **Individual**: $125 one-time → `STRIPE_PRICE_INDIVIDUAL`
-- **Business10**: $1,000/month recurring → `STRIPE_PRICE_BUSINESS10`
+- **Individual**: $150 one-time → `STRIPE_PRICE_INDIVIDUAL`
+- **Business10**: $1,250/month recurring → `STRIPE_PRICE_BUSINESS10`
 - **Business30**: $3,000/month recurring → `STRIPE_PRICE_BUSINESS30`
 
 Copy price IDs to `.env.local` (and Vercel). Business Unlimited is discontinued.
@@ -190,7 +190,7 @@ After MVP launch:
 
 ## 💰 Pricing Configuration
 
-- **Business10 / Business30** numbers (price, included notarizations, $75 overage)
+- **Business10 / Business30** numbers (price, included notarizations, $100 overage)
   live in one place: `src/lib/plans.ts`. They must match your Stripe prices, so
   they are read-only in admin; plan names, descriptions and bullets are editable.
 - **Individual** pricing is fully editable from `/admin/settings`.
@@ -208,9 +208,10 @@ After MVP launch:
 - Milestone celebrations
 
 ### Revenue Models
-1. Individual: $125 per appointment
-2. Business10: $1,000/mo (10 notarizations incl., $75 each additional)
-3. Business30: $3,000/mo (30 notarizations incl., $75 each additional)
+1. Individual: $150 per notarization appointment
+2. Business10: $1,250/mo (10 notarizations incl., $100 each additional)
+3. Business30: $3,000/mo (30 notarizations incl., $100 each additional; lower cost from 28/mo)
+4. Enterprise: custom quote for ~50+ notarizations/month (no Stripe price, no unlimited plan)
 4. Business Unlimited: discontinued (legacy records only)
 
 ## 🐛 Troubleshooting

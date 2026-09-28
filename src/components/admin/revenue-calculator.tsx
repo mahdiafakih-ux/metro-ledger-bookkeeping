@@ -7,11 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/form";
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
 import { saveScenario, deleteScenario, listScenarios, type ScenarioInputs } from "@/lib/actions/scenarios";
-import { SUBSCRIPTION_PLANS } from "@/lib/plans";
+import { INDIVIDUAL_PRICE_CENTS, SUBSCRIPTION_PLANS } from "@/lib/plans";
 
 // Business prices come from the plan catalog (same source as Stripe billing).
 const PRICES = {
-  individual: 125,
+  individual: INDIVIDUAL_PRICE_CENTS / 100,
   business10: SUBSCRIPTION_PLANS.business10.monthlyCents / 100,
   business30: SUBSCRIPTION_PLANS.business30.monthlyCents / 100,
   additional: SUBSCRIPTION_PLANS.business10.overagePerNotarizationCents / 100,
@@ -78,7 +78,7 @@ export function RevenueCalculator({ remainingGoalCents }: { remainingGoalCents: 
         <CardBody className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label>Individual Appointments ($125 ea)</Label>
+              <Label>Individual Appointments (${PRICES.individual.toLocaleString()} ea)</Label>
               <Input type="number" min={0} value={inputs.individualAppointments} onChange={(e) => set("individualAppointments", Number(e.target.value))} />
             </div>
             <div>

@@ -1,41 +1,42 @@
-# Plans & Billing — Business10 / Business30
+# Plans & Billing — Individual / Business10 / Business30 / Enterprise
 
 Source of truth: `src/lib/plans.ts`. Billing, usage metering, the client portal, admin screens,
 calculators and the public pricing cards all read their numbers from that file.
 
 | Plan | Price | Included per billing month | Each additional notarization | Stripe env var |
 |---|---|---|---|---|
-| Individual | $125 one-time | 1 notarial act | $10/act (statutory) | `STRIPE_PRICE_INDIVIDUAL` |
-| Business10 | $1,000 / month | 10 notarizations | $75 | `STRIPE_PRICE_BUSINESS10` |
-| Business30 | $3,000 / month | 30 notarizations | $75 | `STRIPE_PRICE_BUSINESS30` |
+| Individual | $150 per notarization appointment (one-time) | 1 notarial act | $10/act (statutory) | `STRIPE_PRICE_INDIVIDUAL` |
+| Business10 | $1,250 / month | 10 notarizations | $100 | `STRIPE_PRICE_BUSINESS10` |
+| Business30 | $3,000 / month | 30 notarizations | $100 | `STRIPE_PRICE_BUSINESS30` |
+| Enterprise | Custom quote (~50+ / month) | Quoted | Quoted | none — contact-us only, not in Stripe |
 | Business Unlimited | **discontinued** | — | — | `STRIPE_PRICE_BUSINESS_UNLIMITED` (optional, legacy recognition only) |
+
+There is no unlimited plan. Enterprise is a quote, handled as a lead from `/contact?service=enterprise`.
+
+The Individual price shown on the site comes from the admin-editable `individual` PricingPlan row
+(Admin → Settings → Pricing Plans); `plans.ts` holds the default (`INDIVIDUAL_PRICE_CENTS`).
 
 Michigan split: each notarization includes the $10 statutory notarial fee (MCL 55.285). The rest is
 separately disclosed mobile/remote service, scheduling and administrative services. Overage invoices
-itemize `$10 statutory` + `$65 service` per extra notarization.
+itemize `$10 statutory` + `$90 service` per extra notarization.
 
-## Business10 eligibility cap (30 notarizations/month)
+## Which plan is recommended
 
-Business10 is only available to customers with **up to 30 notarizations a month**
-(`maxMonthlyNotarizations: 30` in `plans.ts`). Prices, included quantities and the $75 overage are
-unchanged.
+There is **no eligibility cap**. Any business may choose either plan at any volume, and nobody is
+switched automatically when usage changes. The calculators (public estimator, portal plan picker,
+admin Subscription & Usage) compare actual monthly cost and badge the cheaper plan
+(`cheapestPlanFor()` in `plans.ts`):
 
-- **1–30 a month:** Business10 can be shown, recommended and chosen.
-- **31+ a month:** Business10 is not selectable or recommended anywhere. Business30 is the applicable plan.
+| Notarizations / month | Business10 | Business30 | Recommended |
+|---|---|---|---|
+| 10 | $1,250 | $3,000 | Business10 |
+| 27 | $2,950 | $3,000 | Business10 |
+| 28 | $3,050 | $3,000 | Business30 |
+| 30 | $3,250 | $3,000 | Business30 |
+| 40 | $4,250 | $4,000 | Business30 |
 
-**Where it's enforced (server-side, not just the UI):**
-`src/lib/plan-eligibility.ts` → `checkPlanEligibility()` runs in `/api/checkout`,
-`/api/subscription/change`, the admin "Start a plan" and "Change plan" actions, and inside
-`changeBusinessSubscriptionPlan()` as a backstop. A blocked request gets HTTP 422 with the reason.
-
-**Which volume counts:** the highest of the business's `expectedMonthlyVolume`, `monthlyUsage` (admin
-"Monthly usage"), `monthlyUsageCount` (metered this billing period) and any volume the customer declares
-at checkout. A customer can't get Business10 by under-declaring. A higher declared volume is saved to
-`expectedMonthlyVolume`.
-
-**Existing Business10 subscribers above 30:** they are not switched automatically, because that changes
-what Stripe bills. The admin Subscription & Usage panel shows a warning, and Business10 can't be
-re-selected; move them to Business30 with Change plan.
+At 50+ a month the calculators also suggest asking for an Enterprise quote. The admin panel shows how much
+more a subscriber pays on their current plan at their known volume, as a prompt to offer a switch.
 
 ## How usage works
 
@@ -63,26 +64,44 @@ re-selected; move them to Business30 with Change plan.
 
 ## Stripe setup (one time)
 
-1. **Business10:** Product catalog → Add product "Business10" → Recurring, Monthly, **$1,000.00 USD**.
-   Copy the `price_…` ID into `STRIPE_PRICE_BUSINESS10`.
-2. **Business30:** On the Business30 product, add a **new** price: Recurring, Monthly, **$3,000.00 USD**.
-   Copy the new `price_…` into `STRIPE_PRICE_BUSINESS30`. Then archive the old $2,500 price.
-3. **Business Unlimited:** Archive the product/price. Optionally put its old price ID in
+1. **Business10:** On the Business10 product, add a **new** price: Recurring, Monthly, **$1,250.00 USD**.
+   Copy the `price_…` ID into `STRIPE_PRICE_BUSINESS10`. Archive the old $1,000 price once no
+   subscription uses it (Stripe prices can't be edited, only replaced).
+2. **Business30:** Recurring, Monthly, **$3,000.00 USD** (unchanged) in `STRIPE_PRICE_BUSINESS30`.
+3. **Individual:** On the Individual product, add a **new** one-time price of **$150.00 USD** and put it in
+   `STRIPE_PRICE_INDIVIDUAL`. Archive the $125 price.
+   - Overage ($100) is not a Stripe price: it is billed on app-generated invoices from `plans.ts`.
+   - Enterprise has no Stripe price.
+4. **Business Unlimited:** Archive the product/price. Optionally put its old price ID in
    `STRIPE_PRICE_BUSINESS_UNLIMITED` so any legacy subscriber still displays correctly.
-4. **Webhook endpoint** (`/api/webhooks/stripe`) must send these events:
+5. **Webhook endpoint** (`/api/webhooks/stripe`) must send these events:
    - `checkout.session.completed`, `checkout.session.expired`, `checkout.session.async_payment_failed`
    - `payment_intent.payment_failed`, `charge.refunded`
    - `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`
    - `invoice.paid` (new)
-5. **Customer portal:** Settings → Billing → Customer portal. Allow payment-method updates, invoice
-   history and cancellation. Turn plan switching **off** there. The app handles switching itself, and
-   Stripe's portal can't enforce the Business10 30-notarization cap.
+6. **Customer portal:** Settings → Billing → Customer portal. Allow payment-method updates, invoice
+   history and cancellation. Keep plan switching **off** there — the app handles switching itself (and
+   records which plan each notarization was used under).
+
+## Existing Business10 subscribers on the old $1,000 price
+
+Stripe keeps charging an existing subscription its original price until you change it. After
+`STRIPE_PRICE_BUSINESS10` points at the new $1,250 price, such subscriptions are still recognised as
+Business10 through their `planKey` metadata, but:
+
+- their base charge stays $1,000 until you move them to the new price (Stripe Dashboard → the
+  subscription → Update subscription → replace the price; choose your proration setting), and
+- overage recorded after this deploy uses the new $100 rate from `plans.ts`.
+
+Give customers notice before changing either (Terms: "Plan pricing may be updated with notice").
 
 ## Deploy order (production)
 
 1. Back up the database (Supabase → Database → Backups).
-2. Run the migration against production **before** deploying the code:
-   `DATABASE_URL=<prod url> npx prisma migrate deploy`. It only adds things, and the currently deployed
-   code keeps working after it runs.
+2. If not already done for the Business10/Business30 release, run its migration against production
+   **before** deploying: `DATABASE_URL=<prod url> npx prisma migrate deploy`. The pricing revision adds
+   no migration.
 3. Add or update the env vars in Vercel (Production and Preview).
 4. Deploy the branch.
+5. Admin → Settings → Pricing Plans → Individual Service: set the total to $150 (statutory $10 + service
+   $140). Existing database rows are not changed by the seed.

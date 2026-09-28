@@ -4,7 +4,6 @@ import { prisma } from "@/lib/db";
 import { authorizeBusinessManager } from "@/lib/business-auth";
 import { changeBusinessSubscriptionPlan } from "@/lib/subscriptions";
 import { isSubscriptionPlanKey } from "@/lib/plans";
-import { checkPlanEligibility, parseDeclaredVolume } from "@/lib/plan-eligibility";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 /**
@@ -44,10 +43,6 @@ export async function POST(request: NextRequest) {
     if (business.currentPlanKey === planKey) {
       return NextResponse.json({ error: "Already on this plan" }, { status: 409 });
     }
-
-    // Plan eligibility caps (Business10: up to 30 notarizations/month).
-    const eligibility = await checkPlanEligibility(businessId, planKey, parseDeclaredVolume(body?.monthlyVolume));
-    if (!eligibility.ok) return NextResponse.json({ error: eligibility.error }, { status: 422 });
 
     const result = await changeBusinessSubscriptionPlan({
       stripeSubscriptionId: business.stripeSubscriptionId,

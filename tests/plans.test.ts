@@ -3,73 +3,113 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   SUBSCRIPTION_PLANS,
-  BUSINESS10_MAX_MONTHLY_NOTARIZATIONS,
   allocateOverage,
-  applicablePlanFor,
-  eligiblePlansFor,
+  business30BreakEven,
+  cheapestPlanFor,
+  ENTERPRISE_OFFER,
+  INDIVIDUAL_PRICE_CENTS,
   feeBreakdown,
-  isPlanEligible,
-  planIneligibilityReason,
   isSubscriptionPlanKey,
   monthlyCostCents,
   planDisplayName,
+  savingsVersus,
+  suggestsEnterprise,
+  syncPlanFeatureNumbers,
 } from "../src/lib/plans";
+import * as plans from "../src/lib/plans";
+import { DEFAULT_PRICING_PLANS } from "../src/lib/pricing-defaults";
 
 const { business10, business30 } = SUBSCRIPTION_PLANS;
 
-test("Business10 monthly totals match the published examples", () => {
-  assert.equal(monthlyCostCents(business10, 10), 100_000);
-  assert.equal(monthlyCostCents(business10, 11), 107_500);
-  assert.equal(monthlyCostCents(business10, 15), 137_500);
-  assert.equal(monthlyCostCents(business10, 20), 175_000);
-  assert.equal(monthlyCostCents(business10, 0), 100_000);
-});
-
-test("Business30 monthly totals match the published examples", () => {
-  assert.equal(monthlyCostCents(business30, 30), 300_000);
-  assert.equal(monthlyCostCents(business30, 31), 307_500);
-  assert.equal(monthlyCostCents(business30, 35), 337_500);
-  assert.equal(monthlyCostCents(business30, 40), 375_000);
-});
-
-test("both plans charge $75 per additional notarization", () => {
-  assert.equal(business10.overagePerNotarizationCents, 7_500);
-  assert.equal(business30.overagePerNotarizationCents, 7_500);
-});
-
-test("prices, allowances and overage are unchanged by the cap", () => {
-  assert.equal(business10.monthlyCents, 100_000);
+test("catalog prices: Business10 $1,250 / 10 incl, Business30 $3,000 / 30 incl, $100 overage", () => {
+  assert.equal(business10.monthlyCents, 125_000);
   assert.equal(business10.includedNotarizations, 10);
   assert.equal(business30.monthlyCents, 300_000);
   assert.equal(business30.includedNotarizations, 30);
+  assert.equal(business10.overagePerNotarizationCents, 10_000);
+  assert.equal(business30.overagePerNotarizationCents, 10_000);
+  assert.equal(INDIVIDUAL_PRICE_CENTS, 15_000);
 });
 
-test("Business10 is capped at 30 notarizations a month; Business30 is not", () => {
-  assert.equal(BUSINESS10_MAX_MONTHLY_NOTARIZATIONS, 30);
-  assert.equal(isPlanEligible(business10, 30), true);
-  assert.equal(isPlanEligible(business10, 31), false);
-  assert.equal(isPlanEligible(business30, 1), true);
-  assert.equal(isPlanEligible(business30, 500), true);
-  assert.deepEqual(eligiblePlansFor(31).map((p) => p.key), ["business30"]);
+test("Business10 monthly totals", () => {
+  assert.equal(monthlyCostCents(business10, 0), 125_000);
+  assert.equal(monthlyCostCents(business10, 10), 125_000);
+  assert.equal(monthlyCostCents(business10, 11), 135_000);
+  assert.equal(monthlyCostCents(business10, 20), 225_000);
+  assert.equal(monthlyCostCents(business10, 27), 295_000);
+  assert.equal(monthlyCostCents(business10, 28), 305_000);
+  assert.equal(monthlyCostCents(business10, 31), 335_000);
 });
 
-test("applicable plan: Business10 for 1–30, Business30 from 31", () => {
-  for (let n = 1; n <= 30; n++) assert.equal(applicablePlanFor(n).key, "business10", `n=${n}`);
-  for (let n = 31; n <= 120; n++) assert.equal(applicablePlanFor(n).key, "business30", `n=${n}`);
+test("Business30 monthly totals", () => {
+  assert.equal(monthlyCostCents(business30, 1), 300_000);
+  assert.equal(monthlyCostCents(business30, 30), 300_000);
+  assert.equal(monthlyCostCents(business30, 31), 310_000);
+  assert.equal(monthlyCostCents(business30, 35), 350_000);
+  assert.equal(monthlyCostCents(business30, 50), 500_000);
 });
 
-test("server-side reason blocks Business10 above the cap only", () => {
-  assert.equal(planIneligibilityReason("business10", 30), null);
-  assert.match(planIneligibilityReason("business10", 31) ?? "", /up to 30 notarizations\/month.*Business30/);
-  assert.equal(planIneligibilityReason("business30", 31), null);
-  assert.equal(planIneligibilityReason("business30", 5), null);
+test("recommendation: Business10 for 1–27, Business30 from 28", () => {
+  assert.equal(business30BreakEven(), 28);
+  for (let n = 0; n <= 27; n++) assert.equal(cheapestPlanFor(n).key, "business10", `n=${n}`);
+  for (let n = 28; n <= 200; n++) assert.equal(cheapestPlanFor(n).key, "business30", `n=${n}`);
+  for (let n = 0; n <= 200; n++) {
+    const best = cheapestPlanFor(n);
+    const other = best.key === "business10" ? business30 : business10;
+    assert.ok(monthlyCostCents(best, n) <= monthlyCostCents(other, n), `n=${n}`);
+  }
+});
+
+test("savingsVersus reports what the non-recommended plan costs extra", () => {
+  assert.equal(savingsVersus(business10, 27), 0);
+  assert.equal(savingsVersus(business30, 27), 5_000); // $3,000 vs $2,950
+  assert.equal(savingsVersus(business10, 28), 5_000); // $3,050 vs $3,000
+  assert.equal(savingsVersus(business10, 40), 25_000); // $4,250 vs $4,000
+});
+
+test("no hard eligibility cap: Business10 stays a normal choice at any volume", () => {
+  // The cap helpers from c60cbed must be gone so nothing can block a plan by volume.
+  for (const name of ["isPlanEligible", "eligiblePlansFor", "planIneligibilityReason", "BUSINESS10_MAX_MONTHLY_NOTARIZATIONS", "applicablePlanFor"]) {
+    assert.equal((plans as Record<string, unknown>)[name], undefined, name);
+  }
+  assert.equal("maxMonthlyNotarizations" in business10, false);
+});
+
+test("Enterprise is a quote-only offer, never a subscription or unlimited plan", () => {
+  assert.equal(isSubscriptionPlanKey("enterprise"), false);
+  assert.equal(ENTERPRISE_OFFER.suggestedMinMonthlyNotarizations, 50);
+  assert.equal(suggestsEnterprise(49), false);
+  assert.equal(suggestsEnterprise(50), true);
+  assert.equal(DEFAULT_PRICING_PLANS.some((p) => /unlimited/i.test(p.key + p.name)), false);
+});
+
+test("default pricing rows match the catalog and keep the $10 statutory split", () => {
+  const byKey = Object.fromEntries(DEFAULT_PRICING_PLANS.map((p) => [p.key, p]));
+  assert.equal(byKey.individual.totalCents, 15_000);
+  assert.equal(byKey.individual.statutoryFeeCents + byKey.individual.serviceFeeCents, 15_000);
+  for (const key of ["business10", "business30"] as const) {
+    const row = byKey[key];
+    const plan = SUBSCRIPTION_PLANS[key];
+    assert.equal(row.totalCents, plan.monthlyCents, key);
+    assert.equal(row.overageFeeCents, plan.overagePerNotarizationCents, key);
+    assert.equal(row.statutoryFeeCents * row.actsIncluded + row.serviceFeeCents, plan.monthlyCents, key);
+    assert.ok(!row.features.some((f) => f.includes("$75")), key);
+  }
+});
+
+test("stale dollar amounts in admin-edited feature bullets are replaced from the catalog", () => {
+  const out = syncPlanFeatureNumbers(
+    ["10 notarizations included every billing month", "$75 per additional notarization", "One monthly invoice"],
+    business10
+  );
+  assert.deepEqual(out, ["10 notarizations included every billing month", "$100 per additional notarization", "One monthly invoice"]);
 });
 
 test("Michigan fee breakdown keeps statutory fee at $10/act", () => {
   const b10 = feeBreakdown(business10);
   assert.equal(b10.statutoryCents, 10 * 1000);
   assert.equal(b10.statutoryCents + b10.serviceCents, business10.monthlyCents);
-  assert.equal(b10.overageStatutoryCents + b10.overageServiceCents, 7_500);
+  assert.equal(b10.overageStatutoryCents + b10.overageServiceCents, 10_000);
   const b30 = feeBreakdown(business30);
   assert.equal(b30.statutoryCents, 30 * 1000);
   assert.equal(b30.statutoryCents + b30.serviceCents, business30.monthlyCents);

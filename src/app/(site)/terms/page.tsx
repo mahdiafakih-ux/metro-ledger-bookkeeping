@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { SUBSCRIPTION_PLANS } from "@/lib/plans";
+import { formatCents } from "@/lib/money";
 
 export const metadata: Metadata = {
   title: "Terms of Service",
@@ -40,8 +42,9 @@ export default function TermsPage() {
             <strong>Business plans.</strong> Business10 and Business30 are monthly subscriptions that
             include 10 and 30 notarizations per billing month, respectively. Each notarization beyond
             the included amount is billed at the additional-notarization rate shown at enrollment
-            ($75 each at the time of writing). Business10 is available only to customers with up to 30
-            notarizations per month; customers above 30 per month are on Business30. Unused notarizations do not roll over. Plan changes take
+            ({formatCents(SUBSCRIPTION_PLANS.business10.overagePerNotarizationCents, { showCents: false })} each at the time of writing). Customers may choose
+            either plan at any volume; we do not change a plan automatically when usage changes. Enterprise
+            arrangements are quoted individually in writing. Unused notarizations do not roll over. Plan changes take
             effect immediately and are prorated by our payment processor. Plan pricing may be updated
             with notice.
           </p>

@@ -78,7 +78,7 @@ async function main() {
   const clients = await Promise.all(
     [
       { name: "Sarah Mitchell", company: "", email: "sarah.mitchell@example.com", phone: "(313) 555-0110", clientType: "individual", leadStatus: "active_client", leadSource: "google", totalAppointments: 2, totalRevenueCents: 25000 },
-      { name: "David Chen", company: "", email: "dchen@example.com", phone: "(248) 555-0133", clientType: "individual", leadStatus: "active_client", leadSource: "referral", totalAppointments: 1, totalRevenueCents: 12500 },
+      { name: "David Chen", company: "", email: "dchen@example.com", phone: "(248) 555-0133", clientType: "individual", leadStatus: "active_client", leadSource: "referral", totalAppointments: 1, totalRevenueCents: 15000 },
       { name: "Maria Alvarez", company: "Alvarez Realty Group", email: "maria@alvarezrealty.example", phone: "(586) 555-0177", clientType: "real_estate_agent", leadStatus: "recurring_client", leadSource: "outreach", totalAppointments: 6, totalRevenueCents: 75000 },
       { name: "James Patterson", company: "", email: "jpatterson@example.com", phone: "(734) 555-0199", clientType: "individual", leadStatus: "interested", leadSource: "website", totalAppointments: 0, totalRevenueCents: 0 },
       { name: "Angela Wu", company: "Wu Family Law", email: "awu@wufamilylaw.example", phone: "(313) 555-0142", clientType: "law_firm", leadStatus: "proposal_sent", leadSource: "linkedin", totalAppointments: 0, totalRevenueCents: 0 },
@@ -99,9 +99,9 @@ async function main() {
   const businesses = await Promise.all(
     [
       { companyName: "Metro Title Group", category: "title_company", contactName: "Rebecca Long", email: "rebecca@metrotitlegroup.example", phone: "(313) 555-0200", billingContactName: "Accounts Payable", billingContactEmail: "ap@metrotitlegroup.example", packageKey: "business30", monthlyUsage: 14, monthlyRevenueCents: 300000, expectedMonthlyVolume: 18, status: "active" },
-      { companyName: "Great Lakes Mortgage Co.", category: "mortgage_company", contactName: "Tom Ferraro", email: "tferraro@glmortgage.example", phone: "(248) 555-0221", billingContactName: "Tom Ferraro", billingContactEmail: "tferraro@glmortgage.example", packageKey: "business30", monthlyUsage: 31, monthlyRevenueCents: 307500, expectedMonthlyVolume: 30, status: "active" },
+      { companyName: "Great Lakes Mortgage Co.", category: "mortgage_company", contactName: "Tom Ferraro", email: "tferraro@glmortgage.example", phone: "(248) 555-0221", billingContactName: "Tom Ferraro", billingContactEmail: "tferraro@glmortgage.example", packageKey: "business30", monthlyUsage: 31, monthlyRevenueCents: 310000, expectedMonthlyVolume: 30, status: "active" },
       { companyName: "Dearborn Family Dentistry", category: "healthcare", contactName: "Dr. Nadia Youssef", email: "office@dearbornfamilydental.example", phone: "(313) 555-0255", billingContactName: "", billingContactEmail: "", packageKey: "", monthlyUsage: 0, monthlyRevenueCents: 0, expectedMonthlyVolume: 5, status: "lead" },
-      { companyName: "Prestige Auto Group", category: "dealership", contactName: "Mike Robertson", email: "mrobertson@prestigeauto.example", phone: "(586) 555-0266", billingContactName: "Prestige Accounting", billingContactEmail: "billing@prestigeauto.example", packageKey: "business10", monthlyUsage: 9, monthlyRevenueCents: 100000, expectedMonthlyVolume: 12, status: "active" },
+      { companyName: "Prestige Auto Group", category: "dealership", contactName: "Mike Robertson", email: "mrobertson@prestigeauto.example", phone: "(586) 555-0266", billingContactName: "Prestige Accounting", billingContactEmail: "billing@prestigeauto.example", packageKey: "business10", monthlyUsage: 9, monthlyRevenueCents: 125000, expectedMonthlyVolume: 12, status: "active" },
       { companyName: "Somerset Senior Living", category: "senior_living", contactName: "Patricia Nowak", email: "pnowak@somersetsl.example", phone: "(248) 555-0288", billingContactName: "", billingContactEmail: "", packageKey: "", monthlyUsage: 0, monthlyRevenueCents: 0, expectedMonthlyVolume: 8, status: "lead" },
     ].map((b) =>
       prisma.business.create({
@@ -190,8 +190,8 @@ async function main() {
         documentType: "Signature documents",
         numberOfActs: 1,
         statutoryFeeCents: 1000,
-        otherFeesCents: 11500,
-        totalAmountCents: 12500,
+        otherFeesCents: 14000,
+        totalAmountCents: 15000,
         scheduledStart: start,
         scheduledEnd: end,
         isDemo: true,

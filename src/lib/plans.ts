@@ -22,6 +22,8 @@
  * that split for display.
  */
 
+import { formatCents } from "./money";
+
 export const STATUTORY_FEE_PER_ACT_CENTS = 1000; // $10 — Michigan maximum per notarial act
 
 export type SubscriptionPlanKey = "business10" | "business30";
@@ -35,12 +37,6 @@ export interface SubscriptionPlan {
   monthlyCents: number;
   includedNotarizations: number;
   overagePerNotarizationCents: number;
-  /**
-   * Hard eligibility cap: the most notarizations per month a customer may
-   * have and still choose this plan. null = no cap. Above the cap the plan
-   * is not selectable or recommended anywhere (UI and server).
-   */
-  maxMonthlyNotarizations: number | null;
   /** Env var that must hold this plan's recurring monthly Stripe Price ID. */
   stripePriceEnv: string;
   status: "active";
@@ -51,10 +47,9 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlanKey, SubscriptionPlan> =
     key: "business10",
     name: "Business10",
     shortName: "B10",
-    monthlyCents: 100_000,
+    monthlyCents: 125_000,
     includedNotarizations: 10,
-    overagePerNotarizationCents: 7_500,
-    maxMonthlyNotarizations: 30,
+    overagePerNotarizationCents: 10_000,
     stripePriceEnv: "STRIPE_PRICE_BUSINESS10",
     status: "active",
   },
@@ -64,8 +59,7 @@ export const SUBSCRIPTION_PLANS: Record<SubscriptionPlanKey, SubscriptionPlan> =
     shortName: "B30",
     monthlyCents: 300_000,
     includedNotarizations: 30,
-    overagePerNotarizationCents: 7_500,
-    maxMonthlyNotarizations: null,
+    overagePerNotarizationCents: 10_000,
     stripePriceEnv: "STRIPE_PRICE_BUSINESS30",
     status: "active",
   },
@@ -114,8 +108,8 @@ export function planDisplayName(key: string | null | undefined): string {
 
 /**
  * Monthly cost for a given number of notarizations on a plan.
- *   Business10: 10 → $1,000 · 11 → $1,075 · 15 → $1,375 · 20 → $1,750
- *   Business30: 30 → $3,000 · 31 → $3,075 · 35 → $3,375 · 40 → $3,750
+ *   Business10: 10 → $1,250 · 11 → $1,350 · 20 → $2,250 · 27 → $2,950 · 28 → $3,050
+ *   Business30: 30 → $3,000 · 31 → $3,100 · 35 → $3,500 · 40 → $4,000
  */
 export function monthlyCostCents(plan: SubscriptionPlan, notarizations: number): number {
   const n = Math.max(0, Math.floor(notarizations));
@@ -126,47 +120,60 @@ export function overageUnits(included: number, used: number): number {
   return Math.max(0, Math.floor(used) - included);
 }
 
-/** Business10 is only available up to this many notarizations per month. */
-export const BUSINESS10_MAX_MONTHLY_NOTARIZATIONS = SUBSCRIPTION_PLANS.business10.maxMonthlyNotarizations as number;
-
-/** Whether a plan may be chosen for a given monthly notarization volume. */
-export function isPlanEligible(plan: SubscriptionPlan, notarizations: number): boolean {
-  const n = Math.max(0, Math.floor(notarizations));
-  return plan.maxMonthlyNotarizations == null || n <= plan.maxMonthlyNotarizations;
-}
-
-/** Plans a customer at this monthly volume may choose, smallest first. */
-export function eligiblePlansFor(notarizations: number): SubscriptionPlan[] {
-  return SUBSCRIPTION_PLAN_LIST.filter((p) => isPlanEligible(p, notarizations));
-}
-
 /**
- * The plan to show as applicable/recommended at a monthly volume: the lowest
- * monthly cost among ELIGIBLE plans (ties go to the smaller plan).
- *   1–30 notarizations → Business10 · 31+ → Business30 (Business10 is capped at 30).
+ * Recommended plan for a monthly volume: the one with the lower actual
+ * monthly cost (ties go to the smaller plan). This is a recommendation only —
+ * any customer may still choose either plan, and nobody is switched
+ * automatically when their usage changes.
+ *   1–27 notarizations → Business10 · 28+ → Business30
  */
-export function applicablePlanFor(notarizations: number): SubscriptionPlan {
-  const eligible = eligiblePlansFor(notarizations);
-  return eligible.reduce((best, p) =>
+export function cheapestPlanFor(notarizations: number): SubscriptionPlan {
+  return SUBSCRIPTION_PLAN_LIST.reduce((best, p) =>
     monthlyCostCents(p, notarizations) < monthlyCostCents(best, notarizations) ? p : best
   );
 }
 
-/** Short customer-facing note about a plan's cap, or null when uncapped. */
-export function planCapLabel(plan: SubscriptionPlan): string | null {
-  return plan.maxMonthlyNotarizations == null ? null : `${plan.name} available up to ${plan.maxMonthlyNotarizations} notarizations/month`;
+/** Monthly saving from the recommended plan vs. the given plan at this volume (0 if none). */
+export function savingsVersus(plan: SubscriptionPlan, notarizations: number): number {
+  return Math.max(0, monthlyCostCents(plan, notarizations) - monthlyCostCents(cheapestPlanFor(notarizations), notarizations));
 }
 
 /**
- * Why a plan can't be chosen at this volume, or null if it can.
- * Used by every server path that starts or changes a subscription.
+ * Smallest monthly volume at which Business30 costs less than Business10,
+ * or Infinity if it never does. Computed, not hard-coded, so marketing copy
+ * stays truthful if prices change. At current prices this is 28
+ * (Business10 $3,050 vs Business30 $3,000); at 27 Business10 is $2,950.
  */
-export function planIneligibilityReason(planKey: SubscriptionPlanKey, notarizations: number): string | null {
-  const plan = SUBSCRIPTION_PLANS[planKey];
-  if (isPlanEligible(plan, notarizations)) return null;
-  const alt = applicablePlanFor(notarizations);
-  return `${planCapLabel(plan)}. At ${Math.floor(notarizations)} notarizations a month, ${alt.name} is the applicable plan.`;
+export function business30BreakEven(): number {
+  for (let n = 0; n <= 500; n++) {
+    if (monthlyCostCents(SUBSCRIPTION_PLANS.business30, n) < monthlyCostCents(SUBSCRIPTION_PLANS.business10, n)) return n;
+  }
+  return Infinity;
 }
+
+/**
+ * Enterprise: custom-quoted, for roughly 50+ notarizations a month.
+ * Not a self-serve or Stripe plan and NOT unlimited — it is a contact-us
+ * offer only. There is deliberately no plan key, price or Stripe env var.
+ */
+export const ENTERPRISE_OFFER = {
+  name: "Enterprise",
+  suggestedMinMonthlyNotarizations: 50,
+  description: "Custom quote for organizations with roughly 50 or more notarizations a month.",
+  ctaHref: "/contact?service=enterprise",
+} as const;
+
+/** Whether a volume is in the range where an Enterprise quote is worth suggesting. */
+export function suggestsEnterprise(notarizations: number): boolean {
+  return Math.floor(notarizations) >= ENTERPRISE_OFFER.suggestedMinMonthlyNotarizations;
+}
+
+/**
+ * Default Individual Service price (one appointment, 1 notarial act included).
+ * The live value is the admin-editable `individual` PricingPlan row; this is
+ * the seed/default and the fallback for internal planning tools.
+ */
+export const INDIVIDUAL_PRICE_CENTS = 15_000;
 
 /**
  * Michigan-compliant split of a subscription's base price: statutory
@@ -203,4 +210,19 @@ export function allocateOverage(
     if (!r.locked) out.set(r.id, units);
   }
   return out;
+}
+
+/**
+ * Feature bullets on subscription plans are admin-editable copy, but any dollar
+ * amount in them must match the catalog. Rewrite "$X per additional
+ * notarization" and "N notarizations included" so an old DB row can never
+ * advertise a stale price.
+ */
+export function syncPlanFeatureNumbers(features: string[], plan: SubscriptionPlan): string[] {
+  const overage = formatCents(plan.overagePerNotarizationCents, { showCents: false });
+  return features.map((f) =>
+    f
+      .replace(/\$[\d,]+(?:\.\d{2})?(?=\s+(?:per|for each|each)\s+(?:additional|extra)\s+notarization)/gi, overage)
+      .replace(/^\d+(?=\s+notarizations included)/i, String(plan.includedNotarizations))
+  );
 }

@@ -15,7 +15,8 @@ export const metadata: Metadata = {
   alternates: { canonical: "/contact" },
 };
 
-export default async function ContactPage() {
+export default async function ContactPage({ searchParams }: { searchParams: Promise<{ service?: string }> }) {
+  const { service } = await searchParams;
   const settings = await getBusinessSettings();
 
   return (
@@ -60,7 +61,7 @@ export default async function ContactPage() {
 
         <div className="lg:col-span-3">
           <div className="rounded-3xl border border-navy-100 bg-white p-6 shadow-[0_30px_80px_-40px_rgba(10,17,40,0.35)] sm:p-8">
-            <ContactForm />
+            <ContactForm defaultService={service === "enterprise" ? "enterprise" : undefined} />
           </div>
         </div>
       </div>

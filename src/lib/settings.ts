@@ -1,6 +1,6 @@
 import { prisma } from "./db";
 import { cache } from "react";
-import { STATUTORY_FEE_PER_ACT_CENTS, feeBreakdown, getSubscriptionPlan } from "./plans";
+import { STATUTORY_FEE_PER_ACT_CENTS, feeBreakdown, getSubscriptionPlan, syncPlanFeatureNumbers } from "./plans";
 
 // A pure read, deliberately never a mutation: this is called from public
 // pages that Next.js can attempt to statically prerender at build time
@@ -45,7 +45,7 @@ export const getActivePricingPlans = cache(async () => {
     const b = feeBreakdown(sub);
     return {
       ...p,
-      features,
+      features: syncPlanFeatureNumbers(features, sub),
       billingPeriod: "monthly",
       statutoryFeeCents: STATUTORY_FEE_PER_ACT_CENTS,
       actsIncluded: sub.includedNotarizations,

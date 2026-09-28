@@ -1,3 +1,4 @@
+import { INDIVIDUAL_PRICE_CENTS } from "@/lib/plans";
 import { detroitDayRange, detroitTodayISO } from "@/lib/tz";
 import { prisma } from "@/lib/db";
 import { computeGoalStats } from "@/lib/goal";
@@ -66,7 +67,7 @@ export async function getDashboardStats() {
     goalDeadline: settings.goalDeadline,
     goalStartDate: settings.goalStartDate,
     earnedCents: totalEarnedCents,
-    avgAppointmentCents: avgAppointmentAgg._avg.totalAmountCents || 12500,
+    avgAppointmentCents: avgAppointmentAgg._avg.totalAmountCents || INDIVIDUAL_PRICE_CENTS,
   });
 
   return {

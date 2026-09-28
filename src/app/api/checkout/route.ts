@@ -5,7 +5,6 @@ import { prisma } from "@/lib/db";
 import { requireClientSession } from "@/lib/client-auth";
 import { authorizeBusinessManager } from "@/lib/business-auth";
 import { SUBSCRIPTION_PLANS, isSubscriptionPlanKey } from "@/lib/plans";
-import { checkPlanEligibility, parseDeclaredVolume } from "@/lib/plan-eligibility";
 
 export async function POST(request: NextRequest) {
   try {
@@ -179,10 +178,6 @@ export async function POST(request: NextRequest) {
           { status: 409 }
         );
       }
-
-      // Plan eligibility caps (Business10: up to 30 notarizations/month).
-      const eligibility = await checkPlanEligibility(businessId, planType, parseDeclaredVolume(body.monthlyVolume));
-      if (!eligibility.ok) return NextResponse.json({ error: eligibility.error }, { status: 422 });
 
       const session = await createBusinessSubscriptionCheckoutSession({
         planKey: planType,

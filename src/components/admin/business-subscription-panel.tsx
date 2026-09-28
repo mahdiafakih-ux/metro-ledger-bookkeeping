@@ -12,12 +12,14 @@ import { Input, Select } from "@/components/ui/form";
 import { formatCents } from "@/lib/money";
 import {
   SUBSCRIPTION_PLAN_LIST,
-  applicablePlanFor,
-  isPlanEligible,
-  planCapLabel,
-  planDisplayName,
+  cheapestPlanFor,
+  getSubscriptionPlan,
   isLegacyPlanKey,
   isSubscriptionPlanKey,
+  monthlyCostCents,
+  planDisplayName,
+  savingsVersus,
+  suggestsEnterprise,
 } from "@/lib/plans";
 import {
   changeBusinessPlanAdmin,
@@ -39,7 +41,7 @@ export interface SubscriptionPanelProps {
   members: { id: string; name: string; email: string; role: string }[];
   stripeReady: boolean;
   missingPriceEnv: string[];
-  /** Highest known monthly volume (expected, typical or metered this period). */
+  /** Highest known monthly volume (expected, typical, or metered this period). */
   monthlyVolume: number;
 }
 
@@ -51,8 +53,10 @@ export function BusinessSubscriptionPanel(p: SubscriptionPanelProps) {
   const [role, setRole] = useState("owner");
   const active = p.hasSubscription && ["active", "past_due", "incomplete"].includes(p.subscriptionStatus);
   const legacy = isLegacyPlanKey(p.planKey);
-  const applicable = applicablePlanFor(p.monthlyVolume);
-  const overCap = SUBSCRIPTION_PLAN_LIST.find((plan) => p.planKey === plan.key && !isPlanEligible(plan, p.monthlyVolume));
+  // Recommendation only: never blocks a plan and never switches anyone automatically.
+  const recommended = cheapestPlanFor(p.monthlyVolume);
+  const currentPlan = active ? getSubscriptionPlan(p.planKey) : null;
+  const overpayCents = currentPlan ? savingsVersus(currentPlan, p.monthlyVolume) : 0;
 
   const run = (fn: () => Promise<{ success: boolean; error?: string }>, ok: string) =>
     start(async () => {
@@ -106,26 +110,26 @@ export function BusinessSubscriptionPanel(p: SubscriptionPanelProps) {
           </div>
         )}
 
+        {p.monthlyVolume > 0 && (
+          <p className="rounded-lg bg-navy-50 p-3 text-xs text-navy-600" data-testid="plan-recommendation">
+            Known volume: <strong>{p.monthlyVolume}/month</strong>. Lower-cost plan at that volume: <strong>{recommended.name}</strong>.
+            {currentPlan && overpayCents > 0 && (
+              <> On {currentPlan.name} this business pays about {formatCents(overpayCents, { showCents: false })}/mo more — you can offer a switch, but nothing changes automatically.</>
+            )}
+            {suggestsEnterprise(p.monthlyVolume) && <> Volume is in Enterprise range — consider a custom quote.</>}
+          </p>
+        )}
+
         <div className="space-y-2">
           <p className="text-xs font-semibold uppercase tracking-wide text-navy-400">{active ? "Change plan" : "Start a plan"}</p>
-          <p className="text-xs text-navy-500">
-            Known volume: <strong>{p.monthlyVolume}</strong> notarizations/month · applicable plan: <strong>{applicable.name}</strong>
-          </p>
-          {overCap && active && (
-            <p className="rounded-lg bg-warning-100 p-3 text-xs text-warning-600">
-              {planCapLabel(overCap)}. This business is at {p.monthlyVolume} — move it to {applicable.name}.
-            </p>
-          )}
           <div className="grid gap-2 sm:grid-cols-2">
             {SUBSCRIPTION_PLAN_LIST.map((plan) => {
               const current = p.planKey === plan.key && active;
-              const eligible = isPlanEligible(plan, p.monthlyVolume);
               return (
                 <Button
                   key={plan.key}
                   variant={current ? "subtle" : "outline"}
-                  disabled={pending || current || !eligible || !p.stripeReady}
-                  title={eligible ? undefined : planCapLabel(plan) ?? undefined}
+                  disabled={pending || current || !p.stripeReady}
                   onClick={() =>
                     active
                       ? run(() => changeBusinessPlanAdmin(p.businessId, plan.key), `Switched to ${plan.name} (prorated by Stripe)`)
@@ -140,9 +144,9 @@ export function BusinessSubscriptionPanel(p: SubscriptionPanelProps) {
                   <span className="text-left">
                     <span className="block font-bold">{plan.name}</span>
                     <span className="block text-xs font-normal text-navy-500">
-                      {eligible
-                        ? `${plan.includedNotarizations} incl. · ${formatCents(plan.overagePerNotarizationCents, { showCents: false })} after`
-                        : planCapLabel(plan)}
+                      {plan.includedNotarizations} incl. · {formatCents(plan.overagePerNotarizationCents, { showCents: false })} after
+                      {p.monthlyVolume > 0 && ` · ${formatCents(monthlyCostCents(plan, p.monthlyVolume), { showCents: false })} at ${p.monthlyVolume}/mo`}
+                      {p.monthlyVolume > 0 && recommended.key === plan.key && " · recommended"}
                     </span>
                   </span>
                   <span className="text-sm">{current ? "Current" : `${formatCents(plan.monthlyCents, { showCents: false })}/mo`}</span>

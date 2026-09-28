@@ -3,10 +3,16 @@ import { PageHero } from "@/components/site/page-hero";
 import { SiteMotion } from "@/components/site/motion";
 import { FaqAccordion } from "@/components/site/faq-accordion";
 import { ComplianceNote } from "@/components/site/compliance-note";
+import { ENTERPRISE_OFFER, SUBSCRIPTION_PLANS, business30BreakEven } from "@/lib/plans";
+import { formatCents } from "@/lib/money";
+
+const money = (c: number) => formatCents(c, { showCents: false });
+const B10 = SUBSCRIPTION_PLANS.business10;
+const B30 = SUBSCRIPTION_PLANS.business30;
 
 export const metadata: Metadata = {
   title: "FAQ",
-  description: "Answers about mobile notary appointments, remote online notarization, Business10/Business30 plans, and Michigan notary fees.",
+  description: "Answers about mobile notary appointments, remote online notarization, Business10/Business30/Enterprise plans, and Michigan notary fees.",
   alternates: { canonical: "/faq" },
 };
 
@@ -18,8 +24,10 @@ const FAQS = [
   { q: "What can you notarize?", a: "Most personal and business documents: real estate, affidavits, powers of attorney, vehicle, financial and estate paperwork. See Services." },
   { q: "Can you explain my document?", a: "No. We're not a law firm and can't give legal advice, explain a document, or choose the notarial act for you. Please ask an attorney or the requesting party." },
   { q: "Do you work with businesses?", a: "Yes — title, lending, legal, real estate, property management, dealerships, banks, healthcare and more." },
-  { q: "What are Business10 and Business30?", a: "Monthly plans. Business10 is $1,000/month with 10 notarizations included; Business30 is $3,000/month with 30 included. Each additional notarization is $75 on either plan. Business10 is available up to 30 notarizations a month; above 30, Business30 is the applicable plan." },
-  { q: "Can we switch plans?", a: "Yes. Owners and admins can move between Business10 and Business30 in the client portal (Business10 is available up to 30 notarizations a month). The change applies immediately and Stripe prorates the monthly charge. Notarizations already used that month keep the terms they were used under." },
+  { q: "What are Business10 and Business30?", a: `Monthly plans. ${B10.name} is ${money(B10.monthlyCents)}/month with ${B10.includedNotarizations} notarizations included; ${B30.name} is ${money(B30.monthlyCents)}/month with ${B30.includedNotarizations} included. Each additional notarization is ${money(B10.overagePerNotarizationCents)} on either plan.` },
+  { q: "Which plan should we choose?", a: `Whichever costs less for your volume. At ${business30BreakEven()} or more notarizations a month ${B30.name} costs less; below that ${B10.name} does. Our calculator shows both totals, and you can choose either plan — we never switch you automatically.` },
+  { q: "Do you offer an unlimited or enterprise plan?", a: `There is no unlimited plan. For roughly ${ENTERPRISE_OFFER.suggestedMinMonthlyNotarizations}+ notarizations a month, contact us for a custom ${ENTERPRISE_OFFER.name} quote.` },
+  { q: "Can we switch plans?", a: "Yes. Owners and admins can move between Business10 and Business30 in the client portal. The change applies immediately and Stripe prorates the monthly charge. Notarizations already used that month keep the terms they were used under." },
   { q: "How does business billing work?", a: "One monthly subscription charge, plus one invoice for any notarizations beyond your plan. Usage is visible in your client portal." },
   { q: "What is the statutory notarial fee?", a: "Michigan caps the fee for the notarial act itself at $10 per act (MCL 55.285). Anything above that pays for separate, disclosed services like travel, scheduling or administration." },
 ];

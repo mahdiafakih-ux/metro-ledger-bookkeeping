@@ -26,7 +26,8 @@ import { PageHero } from "@/components/site/page-hero";
 import { SiteMotion } from "@/components/site/motion";
 import { ComplianceNote } from "@/components/site/compliance-note";
 import { getActivePricingPlans } from "@/lib/settings";
-import { SUBSCRIPTION_PLAN_LIST } from "@/lib/plans";
+import { SUBSCRIPTION_PLAN_LIST, SUBSCRIPTION_PLANS } from "@/lib/plans";
+import { EnterpriseCallout } from "@/components/site/enterprise-callout";
 import { formatCents } from "@/lib/money";
 
 // Reads admin-editable plan copy from the database on every request (numbers
@@ -35,9 +36,9 @@ import { formatCents } from "@/lib/money";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Business Notary Plans — Business10 & Business30",
+  title: "Business Notary Plans — Business10, Business30 & Enterprise",
   description:
-    "Monthly notary plans for Michigan title companies, lenders, law firms and real estate teams. Business10 and Business30 include monthly notarizations, one invoice, and mobile or eligible online notarization.",
+    "Monthly notary plans for Michigan title companies, lenders, law firms and real estate teams. Business10 and Business30 include monthly notarizations, one invoice, and mobile or eligible online notarization. Enterprise quotes for 50+ a month.",
   alternates: { canonical: "/business-solutions" },
 };
 
@@ -59,11 +60,11 @@ const BENEFITS = [
   { icon: LayoutDashboard, title: "Client portal", desc: "Plans, invoices and payments in one place." },
   { icon: FileCheck2, title: "Appointment management", desc: "Every signing on record." },
   { icon: Video, title: "Mobile + online", desc: "We come to you, or meet online for eligible documents." },
-  { icon: Wallet, title: "Predictable base price", desc: "Flat monthly rate. $75 per extra notarization." },
+  { icon: Wallet, title: "Predictable base price", desc: `Flat monthly rate. ${formatCents(SUBSCRIPTION_PLANS.business10.overagePerNotarizationCents, { showCents: false })} per extra notarization.` },
 ];
 
 const STEPS = [
-  { n: "01", title: "Pick a plan", desc: "Business10 or Business30." },
+  { n: "01", title: "Pick a plan", desc: "Business10, Business30, or an Enterprise quote." },
   { n: "02", title: "Book signings", desc: "Mobile or online, whenever you need." },
   { n: "03", title: "One invoice", desc: "Track usage live. Switch plans anytime." },
 ];
@@ -92,10 +93,7 @@ export default async function BusinessSolutionsPage() {
             <a key={p.key} href="#plans" className="group flex items-center justify-between gap-4 rounded-2xl px-5 py-4 transition-colors hover:bg-navy-50">
               <div>
                 <p className="text-sm font-bold text-navy-900">{p.name}</p>
-                <p className="text-xs text-navy-500">
-                  {p.includedNotarizations} included · {money(p.overagePerNotarizationCents)} after
-                  {p.maxMonthlyNotarizations != null && ` · up to ${p.maxMonthlyNotarizations}/mo`}
-                </p>
+                <p className="text-xs text-navy-500">{p.includedNotarizations} included · {money(p.overagePerNotarizationCents)} after</p>
               </div>
               <p className="text-2xl font-extrabold tracking-tight text-navy-900">
                 {money(p.monthlyCents)}
@@ -154,6 +152,9 @@ export default async function BusinessSolutionsPage() {
             <div data-reveal>
               <PlanEstimator />
             </div>
+          </div>
+          <div data-reveal className="mt-8">
+            <EnterpriseCallout />
           </div>
           <ComplianceNote className="mx-auto mt-10 max-w-3xl" />
         </div>

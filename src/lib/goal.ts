@@ -1,4 +1,4 @@
-import { SUBSCRIPTION_PLANS } from "@/lib/plans";
+import { INDIVIDUAL_PRICE_CENTS, SUBSCRIPTION_PLANS } from "@/lib/plans";
 export const MILESTONE_DOLLARS = [5000, 10000, 15000, 20000, 25000, 30000, 35000, 40000, 45000, 50000];
 export const MILESTONE_CENTS = MILESTONE_DOLLARS.map((d) => d * 100);
 
@@ -52,7 +52,7 @@ export function computeGoalStats(input: GoalStatsInput): GoalStats {
     goalDeadline,
     goalStartDate,
     earnedCents,
-    avgAppointmentCents = 12500,
+    avgAppointmentCents = INDIVIDUAL_PRICE_CENTS,
     businessPackageCents = SUBSCRIPTION_PLANS.business10.monthlyCents,
   } = input;
 

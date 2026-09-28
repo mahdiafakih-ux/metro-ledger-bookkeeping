@@ -134,7 +134,7 @@ export default async function SettingsPage() {
         <CardHeader><CardTitle>Pricing Plans</CardTitle></CardHeader>
         <CardBody className="space-y-4">
           <p className="text-xs text-navy-400">
-            Business10 / Business30 prices, included notarizations and the $75 overage rate are fixed by the plan
+            Business10 / Business30 prices, included notarizations and the per-notarization overage rate are fixed by the plan
             catalog and your Stripe prices, so the site always shows what customers are billed. Their names,
             descriptions and feature bullets are editable here.
           </p>
