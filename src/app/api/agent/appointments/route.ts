@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { detroitDayRange, parseDateISO } from "@/lib/tz";
 
 function authorized(request: NextRequest) {
   const expected = process.env.NOTARE_AGENT_API_KEY;
@@ -21,13 +22,30 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
 
+    const dateParam = searchParams.get("date");
     const fromParam = searchParams.get("from");
     const toParam = searchParams.get("to");
 
-    const from = fromParam ? new Date(fromParam) : new Date();
-    const to = toParam
-      ? new Date(toParam)
-      : new Date(from.getTime() + 7 * 24 * 60 * 60 * 1000);
+    let from: Date;
+    let to: Date;
+
+    if (dateParam) {
+      if (!parseDateISO(dateParam)) {
+        return NextResponse.json(
+          { success: false, error: "Invalid date. Use YYYY-MM-DD." },
+          { status: 400 }
+        );
+      }
+
+      const range = detroitDayRange(dateParam);
+      from = range.start;
+      to = range.end;
+    } else {
+      from = fromParam ? new Date(fromParam) : new Date();
+      to = toParam
+        ? new Date(toParam)
+        : new Date(from.getTime() + 7 * 24 * 60 * 60 * 1000);
+    }
 
     if (
       Number.isNaN(from.getTime()) ||
