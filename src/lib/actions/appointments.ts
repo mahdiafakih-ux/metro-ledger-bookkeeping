@@ -8,6 +8,7 @@ import { requireAdminSession } from "@/lib/auth";
 import { syncRevenueForAppointment } from "@/lib/payments";
 import { datetimeLocalToUtc } from "@/lib/tz";
 import { syncBusinessUsageSafe } from "@/lib/usage";
+import { applyAppointmentStatus } from "@/lib/appointment-status";
 
 export interface AppointmentInput {
   type: string;
@@ -166,34 +167,7 @@ export async function setAppointmentStatus(id: string, status: string) {
   const session = await requireAdminSession();
   if (!session) return { success: false, error: "Unauthorized" };
 
-  const before = await prisma.appointment.findUnique({ where: { id } });
-  await prisma.appointment.update({
-    where: { id },
-    data: {
-      status,
-      completedAt: status === "completed" ? (before?.status === "completed" ? before.completedAt ?? new Date() : new Date()) : null,
-    },
-  });
-  await syncRevenueForAppointment(id);
-  await syncBusinessUsageSafe(before?.businessId);
-
-  if (before && status === "cancelled" && before.status !== "cancelled" && before.email) {
-    const { sendAppointmentCancelledEmail } = await import("@/lib/email");
-    await sendAppointmentCancelledEmail({
-      to: before.email,
-      name: before.clientName,
-      confirmationNumber: before.confirmationNumber,
-      serviceType: before.serviceType,
-      scheduledStart: before.scheduledStart,
-    });
-  }
-
-  revalidatePath("/admin/appointments");
-  revalidatePath(`/admin/appointments/${id}`);
-  revalidatePath("/admin/calendar");
-  revalidatePath("/admin");
-  revalidatePath("/admin/goal");
-  revalidatePath("/portal", "layout");
+  await applyAppointmentStatus(id, status);
   return { success: true };
 }
 

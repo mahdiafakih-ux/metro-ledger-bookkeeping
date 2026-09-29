@@ -724,3 +724,22 @@ model CareerResume {
   data          Bytes
   createdAt     DateTime          @default(now())
 }
+
+// ---------- Private AI operator ----------
+
+// Audit trail for write actions taken through POST /api/agent/actions.
+// Stores what was done, never the API key or raw request payload (note text
+// is recorded only as a length).
+model AgentActionLog {
+  id         String   @id @default(cuid())
+  action     String   // allowlisted action name, or "unsupported"
+  targetType String   @default("") // appointment | client | business
+  targetId   String   @default("")
+  summary    String   @default("")
+  success    Boolean
+  error      String   @default("")
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([targetType, targetId])
+}

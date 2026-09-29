@@ -1,6 +1,7 @@
 "use server";
 
 import { Prisma } from "@prisma/client";
+import { after } from "next/server";
 import { prisma } from "@/lib/db";
 import { bookingSchema, type BookingInput } from "@/lib/validation";
 import { generateConfirmationNumber } from "@/lib/utils";
@@ -186,6 +187,33 @@ export async function submitBooking(input: BookingInput): Promise<BookingResult>
     }
   } catch (err) {
     console.error("Booking owner-notification email threw:", err instanceof Error ? err.message : err);
+  }
+
+  // Tell the owner's private AI operator about the booking. Scheduled with
+  // after() so it runs once the customer's response is sent; the hook itself
+  // never throws and is a no-op until Vapi owner calls are configured.
+  try {
+    const committedAppointmentId = appointmentId;
+    after(async () => {
+      try {
+        const { notifyOperatorOfBooking } = await import("@/lib/agent/booking-notification");
+        await notifyOperatorOfBooking({
+          appointmentId: committedAppointmentId,
+          confirmationNumber,
+          clientName: data.name,
+          service: data.serviceType,
+          appointmentType: data.appointmentType,
+          scheduledStart: start,
+          paymentStatus: "unpaid",
+          totalCents,
+          location: data.address || undefined,
+        });
+      } catch (err) {
+        console.error("Operator booking hook failed:", err instanceof Error ? err.message : err);
+      }
+    });
+  } catch (err) {
+    console.error("Operator booking hook could not be scheduled:", err instanceof Error ? err.message : err);
   }
 
   return {
