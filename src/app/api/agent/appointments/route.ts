@@ -1,23 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { detroitDayRange, parseDateISO } from "@/lib/tz";
-
-function authorized(request: NextRequest) {
-  const expected = process.env.NOTARE_AGENT_API_KEY;
-  const provided = request.headers.get("authorization");
-
-  if (!expected) return false;
-
-  return provided === `Bearer ${expected}`;
-}
+import { requireAgentAuth } from "@/lib/agent/auth";
 
 export async function GET(request: NextRequest) {
-  if (!authorized(request)) {
-    return NextResponse.json(
-      { success: false, error: "Unauthorized" },
-      { status: 401 }
-    );
-  }
+  const denied = requireAgentAuth(request);
+  if (denied) return denied;
 
   try {
     const { searchParams } = new URL(request.url);
@@ -106,7 +94,7 @@ export async function GET(request: NextRequest) {
       appointments,
     });
   } catch (error) {
-    console.error("Agent appointments API error:", error);
+    console.error("Agent appointments API error:", error instanceof Error ? error.message : error);
 
     return NextResponse.json(
       { success: false, error: "Unable to retrieve appointments" },
