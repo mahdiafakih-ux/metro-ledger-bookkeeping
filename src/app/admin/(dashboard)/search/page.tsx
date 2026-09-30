@@ -76,7 +76,7 @@ export default async function AdminSearchPage({
 
       {appointments.length > 0 && (
         <ResultSection title="Appointments" icon={ClipboardList}>
-          {appointments.map((a) => (
+          {appointments.map((a: any) => (
             <ResultRow key={a.id} href={`/admin/appointments/${a.id}`} title={`${a.clientName} — ${a.serviceType}`} sub={`${formatDate(a.scheduledStart)} · ${a.confirmationNumber}`} />
           ))}
         </ResultSection>

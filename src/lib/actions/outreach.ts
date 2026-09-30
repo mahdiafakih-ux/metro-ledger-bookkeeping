@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { requireAdminSession } from "@/lib/auth";
 
 export interface OutreachInput {
   businessName: string;
@@ -18,6 +19,9 @@ export interface OutreachInput {
 }
 
 export async function createOutreachEntry(input: OutreachInput) {
+  const session = await requireAdminSession();
+  if (!session) return { success: false as const, error: "Unauthorized" };
+
   await prisma.outreachLog.create({
     data: {
       businessName: input.businessName,
@@ -39,6 +43,9 @@ export async function createOutreachEntry(input: OutreachInput) {
 }
 
 export async function updateOutreachEntry(id: string, input: OutreachInput) {
+  const session = await requireAdminSession();
+  if (!session) return { success: false as const, error: "Unauthorized" };
+
   await prisma.outreachLog.update({
     where: { id },
     data: {
@@ -60,6 +67,9 @@ export async function updateOutreachEntry(id: string, input: OutreachInput) {
 }
 
 export async function deleteOutreachEntry(id: string) {
+  const session = await requireAdminSession();
+  if (!session) return { success: false as const, error: "Unauthorized" };
+
   await prisma.outreachLog.delete({ where: { id } });
   revalidatePath("/admin/outreach");
   return { success: true };

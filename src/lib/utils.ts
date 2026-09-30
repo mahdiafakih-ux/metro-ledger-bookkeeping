@@ -40,6 +40,10 @@ export function formatTime(date: Date | string) {
   return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 }
 
+export function telHref(phone: string) {
+  return `tel:${phone.replace(/[^\d+]/g, "")}`;
+}
+
 export function titleCase(input: string) {
   return input
     .split("_")

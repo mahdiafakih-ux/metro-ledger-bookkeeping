@@ -5,6 +5,7 @@ import { Menu, Search, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Sidebar } from "./sidebar";
 import { NotificationsMenu } from "./notifications-menu";
+import { MobileBottomNav } from "./mobile-bottom-nav";
 
 type NotificationView = Parameters<typeof NotificationsMenu>[0]["notifications"][number];
 
@@ -81,8 +82,10 @@ export function AdminShell({
           </div>
         </header>
 
-        <main className="print-area themed-scroll flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">{children}</main>
+        <main className="print-area themed-scroll flex-1 overflow-y-auto p-4 pb-24 sm:p-6 lg:p-8 lg:pb-8">{children}</main>
       </div>
+
+      <MobileBottomNav />
     </div>
   );
 }

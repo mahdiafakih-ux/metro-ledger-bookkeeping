@@ -13,19 +13,25 @@ import { StatCard } from "@/components/ui/stat-card";
 import { AddRevenueForm } from "@/components/admin/add-revenue-form";
 import { MilestoneCelebration } from "@/components/admin/milestone-celebration";
 import { RevenueChart } from "@/components/admin/charts/revenue-chart";
+import { TrajectoryChart } from "@/components/admin/charts/trajectory-chart";
 import { getDashboardStats, getMonthlyRevenueSeries } from "@/lib/queries/dashboard";
-import { getCumulativeRevenueSeries } from "@/lib/queries/goal";
+import { getCumulativeRevenueSeries, getGoalTrajectorySeries } from "@/lib/queries/goal";
 import { MILESTONE_CENTS } from "@/lib/goal";
 import { formatCents } from "@/lib/money";
 import { formatDate, cn } from "@/lib/utils";
 
 export default async function GoalTrackerPage() {
-  const [stats, revenueSeries, cumulativeSeries] = await Promise.all([
-    getDashboardStats(),
+  const stats = await getDashboardStats();
+  const { goalStats, settings } = stats;
+  const [revenueSeries, cumulativeSeries, trajectorySeries] = await Promise.all([
     getMonthlyRevenueSeries(6),
     getCumulativeRevenueSeries(6),
+    getGoalTrajectorySeries({
+      goalAmountCents: settings.goalAmountCents,
+      goalStartDate: settings.goalStartDate,
+      goalDeadline: settings.goalDeadline,
+    }),
   ]);
-  const { goalStats, settings } = stats;
 
   const paceConfig = {
     ahead: { label: "Ahead of Pace", tone: "green" as const, icon: TrendingUp },
@@ -68,16 +74,28 @@ export default async function GoalTrackerPage() {
           </div>
           <ProgressBar percent={goalStats.percentComplete} className="mt-6" trackClassName="bg-navy-800" barClassName="h-3" />
 
-          <div className="mt-8 grid grid-cols-2 gap-6 sm:grid-cols-4">
+          <div className="mt-8 grid grid-cols-2 gap-6 sm:grid-cols-5">
             <Metric label="Days Remaining" value={String(goalStats.daysRemaining)} />
-            <Metric label="Monthly Target" value={formatCents(goalStats.monthlyTargetCents, { showCents: false })} />
+            <Metric label="Daily Target" value={formatCents(goalStats.dailyTargetCents, { showCents: false })} />
             <Metric label="Weekly Target" value={formatCents(goalStats.weeklyTargetCents, { showCents: false })} />
+            <Metric label="Monthly Target" value={formatCents(goalStats.monthlyTargetCents, { showCents: false })} />
             <Metric
               label="Projected Completion"
               value={goalStats.projectedCompletionDate ? formatDate(goalStats.projectedCompletionDate) : "—"}
             />
           </div>
         </div>
+      </Card>
+
+      {/* Trajectory */}
+      <Card>
+        <CardHeader><CardTitle>Revenue Trajectory</CardTitle></CardHeader>
+        <CardBody>
+          <TrajectoryChart data={trajectorySeries} />
+          <p className="mt-2 text-xs text-navy-400">
+            Required path is the straight line to {formatCents(goalStats.goalAmountCents, { showCents: false })} by {formatDate(settings.goalDeadline)}. Projected path continues from today at your current pace.
+          </p>
+        </CardBody>
       </Card>
 
       {/* Milestones */}

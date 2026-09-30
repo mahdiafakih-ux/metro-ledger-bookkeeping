@@ -87,7 +87,7 @@ export default async function AppointmentsPage({
                 </tr>
               </thead>
               <tbody className="divide-y divide-navy-100">
-                {appointments.map((a) => (
+                {appointments.map((a: any) => (
                   <tr key={a.id} className="hover:bg-navy-50">
                     <td className="px-5 py-3.5">
                       <Link href={`/admin/appointments/${a.id}`} className="font-semibold text-navy-900 hover:text-accent-600">{a.clientName}</Link>

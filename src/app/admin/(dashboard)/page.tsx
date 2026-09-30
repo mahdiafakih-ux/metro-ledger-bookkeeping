@@ -93,7 +93,7 @@ export default async function AdminDashboardPage() {
               <div className="p-5"><EmptyState title="No upcoming appointments" /></div>
             ) : (
               <ul className="divide-y divide-navy-100">
-                {stats.upcomingAppointments.map((a) => (
+                {stats.upcomingAppointments.map((a: any) => (
                   <li key={a.id} className="flex items-start gap-3 p-4">
                     <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent-100 text-accent-600">
                       {a.type === "remote" ? <Video className="h-4 w-4" /> : <MapPin className="h-4 w-4" />}
@@ -117,7 +117,7 @@ export default async function AdminDashboardPage() {
             <div className="p-5"><EmptyState title="No recent activity yet" /></div>
           ) : (
             <ul className="divide-y divide-navy-100">
-              {stats.recentAppointments.map((a) => (
+              {stats.recentAppointments.map((a: any) => (
                 <li key={a.id} className="flex items-center justify-between p-4">
                   <div>
                     <p className="text-sm font-semibold text-navy-900">{a.clientName} — {a.serviceType}</p>

@@ -3,8 +3,8 @@ import { InvoiceForm } from "@/components/admin/invoice-form";
 
 export default async function NewInvoicePage() {
   const [clients, businesses] = await Promise.all([
-    prisma.client.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true, company: true } }),
-    prisma.business.findMany({ orderBy: { companyName: "asc" }, select: { id: true, companyName: true, contactName: true } }),
+    prisma.client.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true, company: true, email: true } }),
+    prisma.business.findMany({ orderBy: { companyName: "asc" }, select: { id: true, companyName: true, contactName: true, email: true } }),
   ]);
 
   return (

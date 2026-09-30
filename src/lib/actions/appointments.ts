@@ -4,8 +4,8 @@ import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { generateConfirmationNumber } from "@/lib/utils";
 import { createNotification } from "@/lib/actions/notifications";
-import { checkAndRecordMilestones } from "@/lib/actions/revenue";
-import { getTotalEarnedCents } from "@/lib/queries/dashboard";
+import { requireAdminSession } from "@/lib/auth";
+import { syncRevenueForAppointment } from "@/lib/payments";
 
 export interface AppointmentInput {
   type: string;
@@ -33,31 +33,10 @@ export interface AppointmentInput {
   recurrenceRule: string;
 }
 
-async function syncRevenueForAppointment(appointmentId: string) {
-  const appt = await prisma.appointment.findUnique({ where: { id: appointmentId } });
-  if (!appt) return;
-
-  const existingEntry = await prisma.revenueEntry.findFirst({ where: { appointmentId } });
-  const shouldHaveRevenue = appt.status === "completed" && appt.paymentStatus === "paid" && appt.totalAmountCents > 0;
-
-  if (shouldHaveRevenue && !existingEntry) {
-    const beforeTotal = await getTotalEarnedCents();
-    await prisma.revenueEntry.create({
-      data: {
-        amountCents: appt.totalAmountCents,
-        source: "appointment",
-        description: `${appt.serviceType} — ${appt.clientName}`,
-        appointmentId: appt.id,
-        date: appt.scheduledStart,
-      },
-    });
-    await checkAndRecordMilestones(beforeTotal, beforeTotal + appt.totalAmountCents);
-  } else if (!shouldHaveRevenue && existingEntry) {
-    await prisma.revenueEntry.delete({ where: { id: existingEntry.id } });
-  }
-}
-
 export async function createAppointment(input: AppointmentInput) {
+  const session = await requireAdminSession();
+  if (!session) return { success: false, error: "Unauthorized" };
+
   const start = new Date(input.scheduledStart);
   const settings = await prisma.businessSettings.findUnique({ where: { id: "default" } });
   const duration = settings?.appointmentDurationMinutes ?? 20;
@@ -109,10 +88,15 @@ export async function createAppointment(input: AppointmentInput) {
 }
 
 export async function updateAppointment(id: string, input: AppointmentInput) {
+  const session = await requireAdminSession();
+  if (!session) return { success: false, error: "Unauthorized" };
+
+  const existing = await prisma.appointment.findUnique({ where: { id } });
   const start = new Date(input.scheduledStart);
   const settings = await prisma.businessSettings.findUnique({ where: { id: "default" } });
   const duration = settings?.appointmentDurationMinutes ?? 20;
   const end = new Date(start.getTime() + duration * 60000);
+  const timeChanged = existing && existing.scheduledStart.getTime() !== start.getTime();
 
   await prisma.appointment.update({
     where: { id },
@@ -145,6 +129,19 @@ export async function updateAppointment(id: string, input: AppointmentInput) {
   });
 
   await syncRevenueForAppointment(id);
+
+  if (timeChanged && input.email) {
+    const { sendAppointmentChangedEmail } = await import("@/lib/email");
+    await sendAppointmentChangedEmail({
+      to: input.email,
+      name: input.clientName,
+      appointmentId: id,
+      confirmationNumber: existing!.confirmationNumber,
+      serviceType: input.serviceType,
+      scheduledStart: start,
+    });
+  }
+
   revalidatePath("/admin/appointments");
   revalidatePath(`/admin/appointments/${id}`);
   revalidatePath("/admin/calendar");
@@ -154,8 +151,24 @@ export async function updateAppointment(id: string, input: AppointmentInput) {
 }
 
 export async function setAppointmentStatus(id: string, status: string) {
+  const session = await requireAdminSession();
+  if (!session) return { success: false, error: "Unauthorized" };
+
+  const before = await prisma.appointment.findUnique({ where: { id } });
   await prisma.appointment.update({ where: { id }, data: { status } });
   await syncRevenueForAppointment(id);
+
+  if (before && status === "cancelled" && before.status !== "cancelled" && before.email) {
+    const { sendAppointmentCancelledEmail } = await import("@/lib/email");
+    await sendAppointmentCancelledEmail({
+      to: before.email,
+      name: before.clientName,
+      confirmationNumber: before.confirmationNumber,
+      serviceType: before.serviceType,
+      scheduledStart: before.scheduledStart,
+    });
+  }
+
   revalidatePath("/admin/appointments");
   revalidatePath(`/admin/appointments/${id}`);
   revalidatePath("/admin/calendar");
@@ -165,6 +178,9 @@ export async function setAppointmentStatus(id: string, status: string) {
 }
 
 export async function setAppointmentPaymentStatus(id: string, paymentStatus: string) {
+  const session = await requireAdminSession();
+  if (!session) return { success: false, error: "Unauthorized" };
+
   await prisma.appointment.update({ where: { id }, data: { paymentStatus } });
   await syncRevenueForAppointment(id);
   revalidatePath("/admin/appointments");
@@ -175,6 +191,9 @@ export async function setAppointmentPaymentStatus(id: string, paymentStatus: str
 }
 
 export async function deleteAppointment(id: string) {
+  const session = await requireAdminSession();
+  if (!session) return { success: false, error: "Unauthorized" };
+
   const existingEntry = await prisma.revenueEntry.findFirst({ where: { appointmentId: id } });
   if (existingEntry) await prisma.revenueEntry.delete({ where: { id: existingEntry.id } });
   await prisma.appointment.delete({ where: { id } });

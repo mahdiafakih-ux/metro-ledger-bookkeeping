@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { dollarsToCents } from "@/lib/money";
+import { requireAdminSession } from "@/lib/auth";
 
 export interface BusinessInfoInput {
   businessName: string;
@@ -17,6 +18,9 @@ export interface BusinessInfoInput {
 }
 
 export async function saveBusinessInfo(input: BusinessInfoInput) {
+  const session = await requireAdminSession();
+  if (!session) return { success: false, error: "Unauthorized" };
+
   await prisma.businessSettings.update({ where: { id: "default" }, data: input });
   revalidatePath("/admin/settings");
   revalidatePath("/");
@@ -30,6 +34,9 @@ export interface HomepageWordingInput {
 }
 
 export async function saveHomepageWording(input: HomepageWordingInput) {
+  const session = await requireAdminSession();
+  if (!session) return { success: false, error: "Unauthorized" };
+
   await prisma.businessSettings.update({ where: { id: "default" }, data: input });
   revalidatePath("/admin/settings");
   revalidatePath("/");
@@ -42,6 +49,9 @@ export interface GoalSettingsInput {
 }
 
 export async function saveGoalSettings(input: GoalSettingsInput) {
+  const session = await requireAdminSession();
+  if (!session) return { success: false, error: "Unauthorized" };
+
   await prisma.businessSettings.update({
     where: { id: "default" },
     data: { goalAmountCents: dollarsToCents(input.goalAmountDollars), goalDeadline: new Date(input.goalDeadline) },

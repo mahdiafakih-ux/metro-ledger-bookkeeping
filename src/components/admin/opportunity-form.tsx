@@ -15,9 +15,14 @@ export function OpportunityForm({ opportunityId, initial }: { opportunityId?: st
   const [businessName, setBusinessName] = useState(initial?.businessName ?? "");
   const [contactName, setContactName] = useState(initial?.contactName ?? "");
   const [category, setCategory] = useState(initial?.category ?? "other");
-  const [stage, setStage] = useState(initial?.stage ?? "lead");
+  const [stage, setStage] = useState(initial?.stage ?? "new_lead");
   const [potentialMonthly, setPotentialMonthly] = useState(initial?.potentialMonthlyDollars ?? 2500);
+  const [dealValue, setDealValue] = useState(initial?.dealValueDollars ?? 30000);
   const [probability, setProbability] = useState(initial?.probability ?? 20);
+  const [nextAction, setNextAction] = useState(initial?.nextAction ?? "");
+  const [nextFollowUpDate, setNextFollowUpDate] = useState(initial?.nextFollowUpDate ?? "");
+  const [contactAttempts, setContactAttempts] = useState(initial?.contactAttempts ?? 0);
+  const [lostReason, setLostReason] = useState(initial?.lostReason ?? "");
   const [expectedCloseDate, setExpectedCloseDate] = useState(initial?.expectedCloseDate ?? "");
   const [notes, setNotes] = useState(initial?.notes ?? "");
 
@@ -26,7 +31,9 @@ export function OpportunityForm({ opportunityId, initial }: { opportunityId?: st
     setSaving(true);
     const input: OpportunityInput = {
       businessName, contactName, category, stage,
-      potentialMonthlyDollars: potentialMonthly, probability,
+      potentialMonthlyDollars: potentialMonthly, dealValueDollars: dealValue, probability,
+      nextAction, nextFollowUpDate: nextFollowUpDate || undefined,
+      contactAttempts, lostReason,
       expectedCloseDate: expectedCloseDate || undefined, notes,
     };
     const res = opportunityId ? await updateOpportunity(opportunityId, input) : await createOpportunity(input);
@@ -53,9 +60,16 @@ export function OpportunityForm({ opportunityId, initial }: { opportunityId?: st
           </Select>
         </FormField>
         <FormField label="Potential Monthly Revenue ($)"><Input type="number" min={0} value={potentialMonthly} onChange={(e) => setPotentialMonthly(Number(e.target.value))} /></FormField>
+        <FormField label="Deal Value ($)" hint="Annualized / contract value"><Input type="number" min={0} value={dealValue} onChange={(e) => setDealValue(Number(e.target.value))} /></FormField>
         <FormField label="Probability (%)"><Input type="number" min={0} max={100} value={probability} onChange={(e) => setProbability(Number(e.target.value))} /></FormField>
         <FormField label="Expected Close Date"><Input type="date" value={expectedCloseDate} onChange={(e) => setExpectedCloseDate(e.target.value)} /></FormField>
+        <FormField label="Contact Attempts"><Input type="number" min={0} value={contactAttempts} onChange={(e) => setContactAttempts(Number(e.target.value))} /></FormField>
+        <FormField label="Next Follow-Up Date"><Input type="date" value={nextFollowUpDate} onChange={(e) => setNextFollowUpDate(e.target.value)} /></FormField>
       </div>
+      <FormField label="Next Action"><Input value={nextAction} onChange={(e) => setNextAction(e.target.value)} placeholder="e.g. Send proposal, schedule demo" /></FormField>
+      {stage === "lost" && (
+        <FormField label="Lost Reason"><Input value={lostReason} onChange={(e) => setLostReason(e.target.value)} placeholder="e.g. Went with a competitor" /></FormField>
+      )}
       <FormField label="Notes"><Textarea value={notes} onChange={(e) => setNotes(e.target.value)} /></FormField>
       <div className="flex items-center justify-between gap-3">
         {opportunityId && (

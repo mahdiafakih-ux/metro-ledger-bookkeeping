@@ -3,6 +3,12 @@ import { Lock, Mail, Phone } from "lucide-react";
 import { LinkButton } from "@/components/ui/button";
 import { getBusinessSettings } from "@/lib/settings";
 
+// Reads admin-editable business settings from the database on every request
+// rather than baking them into the build — also keeps this off Next's
+// static prerender pass, which would otherwise run at build time (before a
+// database may even be reachable, e.g. a fresh Vercel deploy).
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Client Login",
   description: "Notar-E Services client portal.",

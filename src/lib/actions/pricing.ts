@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { dollarsToCents } from "@/lib/money";
+import { requireAdminSession } from "@/lib/auth";
 
 export interface PricingPlanUpdateInput {
   name: string;
@@ -17,6 +18,9 @@ export interface PricingPlanUpdateInput {
 }
 
 export async function updatePricingPlan(id: string, input: PricingPlanUpdateInput) {
+  const session = await requireAdminSession();
+  if (!session) return { success: false, error: "Unauthorized" };
+
   const statutoryFeeCents = dollarsToCents(input.statutoryFeeDollars);
   const serviceFeeCents = dollarsToCents(input.serviceFeeDollars);
   await prisma.pricingPlan.update({

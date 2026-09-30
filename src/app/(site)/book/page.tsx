@@ -3,6 +3,12 @@ import { BookingWizard } from "@/components/site/booking-wizard";
 import { getBusinessSettings } from "@/lib/settings";
 import { prisma } from "@/lib/db";
 
+// Reads admin-editable business settings/pricing/availability from the
+// database on every request rather than baking them into the build — also
+// keeps this off Next's static prerender pass, which would otherwise run
+// at build time (before a database may even be reachable).
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Book an Appointment",
   description: "Book a Michigan notary appointment online in minutes — in-person or remote/online where eligible.",

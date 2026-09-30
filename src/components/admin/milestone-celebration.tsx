@@ -21,7 +21,7 @@ export function MilestoneCelebration() {
   const [confetti] = useState(makeConfettiPieces);
 
   useEffect(() => {
-    getUnseenMilestones().then((rows) => {
+    getUnseenMilestones().then((rows: any) => {
       if (rows.length > 0) setMilestone(rows[0]);
     });
   }, []);

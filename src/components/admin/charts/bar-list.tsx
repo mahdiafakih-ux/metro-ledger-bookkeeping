@@ -5,7 +5,7 @@ export function BarList({ items, formatValue }: { items: { label: string; revenu
 
   return (
     <div className="space-y-3">
-      {items.map((item) => (
+      {items.map((item: any) => (
         <div key={item.label}>
           <div className="mb-1 flex items-center justify-between text-sm">
             <span className="font-medium text-navy-700">{item.label}</span>

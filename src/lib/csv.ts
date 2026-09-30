@@ -13,7 +13,7 @@ function escapeCsvValue(value: string | number): string {
 
 export function toCsv<T>(rows: T[], columns: CsvColumn<T>[]): string {
   const header = columns.map((c) => escapeCsvValue(c.header)).join(",");
-  const lines = rows.map((row) => columns.map((c) => escapeCsvValue(c.value(row))).join(","));
+  const lines = rows.map((row: any) => columns.map((c) => escapeCsvValue(c.value(row))).join(","));
   return [header, ...lines].join("\n");
 }
 

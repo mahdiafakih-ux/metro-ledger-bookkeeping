@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { dollarsToCents } from "@/lib/money";
+import { requireAdminSession } from "@/lib/auth";
 
 export interface ClientInput {
   name: string;
@@ -19,6 +20,9 @@ export interface ClientInput {
 }
 
 export async function createClient(input: ClientInput) {
+  const session = await requireAdminSession();
+  if (!session) return { success: false as const, error: "Unauthorized" };
+
   const client = await prisma.client.create({
     data: {
       name: input.name,
@@ -39,6 +43,9 @@ export async function createClient(input: ClientInput) {
 }
 
 export async function updateClient(id: string, input: ClientInput) {
+  const session = await requireAdminSession();
+  if (!session) return { success: false as const, error: "Unauthorized" };
+
   await prisma.client.update({
     where: { id },
     data: {
@@ -61,6 +68,9 @@ export async function updateClient(id: string, input: ClientInput) {
 }
 
 export async function deleteClient(id: string) {
+  const session = await requireAdminSession();
+  if (!session) return { success: false as const, error: "Unauthorized" };
+
   await prisma.client.delete({ where: { id } });
   revalidatePath("/admin/clients");
   return { success: true };

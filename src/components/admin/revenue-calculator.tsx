@@ -8,12 +8,12 @@ import { Input, Label } from "@/components/ui/form";
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
 import { saveScenario, deleteScenario, listScenarios, type ScenarioInputs } from "@/lib/actions/scenarios";
 
-const PRICES = { individual: 125, business20: 2500, unlimited: 4000, additional: 50 };
+const PRICES = { individual: 125, business30: 2500, unlimited: 4000, additional: 50 };
 
 const PRESETS: Record<string, ScenarioInputs> = {
-  Conservative: { individualAppointments: 10, business20Clients: 1, unlimitedClients: 0, additionalAppointments: 0, customRevenueDollars: 0, expensesDollars: 300 },
-  Target: { individualAppointments: 16, business20Clients: 2, unlimitedClients: 1, additionalAppointments: 5, customRevenueDollars: 0, expensesDollars: 450 },
-  Aggressive: { individualAppointments: 25, business20Clients: 4, unlimitedClients: 2, additionalAppointments: 15, customRevenueDollars: 0, expensesDollars: 650 },
+  Conservative: { individualAppointments: 10, business30Clients: 1, unlimitedClients: 0, additionalAppointments: 0, customRevenueDollars: 0, expensesDollars: 300 },
+  Target: { individualAppointments: 16, business30Clients: 2, unlimitedClients: 1, additionalAppointments: 5, customRevenueDollars: 0, expensesDollars: 450 },
+  Aggressive: { individualAppointments: 25, business30Clients: 4, unlimitedClients: 2, additionalAppointments: 15, customRevenueDollars: 0, expensesDollars: 650 },
 };
 
 export function RevenueCalculator({ remainingGoalCents }: { remainingGoalCents: number }) {
@@ -29,7 +29,7 @@ export function RevenueCalculator({ remainingGoalCents }: { remainingGoalCents: 
   const results = useMemo(() => {
     const monthlyRevenue =
       inputs.individualAppointments * PRICES.individual +
-      inputs.business20Clients * PRICES.business20 +
+      inputs.business30Clients * PRICES.business30 +
       inputs.unlimitedClients * PRICES.unlimited +
       inputs.additionalAppointments * PRICES.additional +
       inputs.customRevenueDollars;
@@ -37,13 +37,13 @@ export function RevenueCalculator({ remainingGoalCents }: { remainingGoalCents: 
     const profit = monthlyRevenue - inputs.expensesDollars;
     const remainingGoalDollars = remainingGoalCents / 100;
     const monthsToCloseGap = monthlyRevenue > 0 ? remainingGoalDollars / monthlyRevenue : Infinity;
-    const additionalBusiness20Needed = Math.max(0, Math.ceil(remainingGoalDollars / PRICES.business20));
+    const additionalBusiness30Needed = Math.max(0, Math.ceil(remainingGoalDollars / PRICES.business30));
     const additionalIndividualNeeded = Math.max(0, Math.ceil(remainingGoalDollars / PRICES.individual));
-    return { monthlyRevenue, annualizedRevenue, profit, remainingGoalDollars, monthsToCloseGap, additionalBusiness20Needed, additionalIndividualNeeded };
+    return { monthlyRevenue, annualizedRevenue, profit, remainingGoalDollars, monthsToCloseGap, additionalBusiness30Needed, additionalIndividualNeeded };
   }, [inputs, remainingGoalCents]);
 
   function set<K extends keyof ScenarioInputs>(key: K, value: number) {
-    setInputs((prev) => ({ ...prev, [key]: value }));
+    setInputs((prev: any) => ({ ...prev, [key]: value }));
   }
 
   async function handleSave() {
@@ -62,7 +62,7 @@ export function RevenueCalculator({ remainingGoalCents }: { remainingGoalCents: 
         <CardHeader className="flex flex-wrap items-center justify-between gap-3">
           <CardTitle>Revenue Calculator</CardTitle>
           <div className="flex gap-2">
-            {Object.keys(PRESETS).map((name) => (
+            {Object.keys(PRESETS).map((name: any) => (
               <Button key={name} size="sm" variant="subtle" onClick={() => setInputs(PRESETS[name])}>{name}</Button>
             ))}
           </div>
@@ -74,8 +74,8 @@ export function RevenueCalculator({ remainingGoalCents }: { remainingGoalCents: 
               <Input type="number" min={0} value={inputs.individualAppointments} onChange={(e) => set("individualAppointments", Number(e.target.value))} />
             </div>
             <div>
-              <Label>Business 20 Clients ($2,500/mo ea)</Label>
-              <Input type="number" min={0} value={inputs.business20Clients} onChange={(e) => set("business20Clients", Number(e.target.value))} />
+              <Label>Business 30 Clients ($2,500/mo ea)</Label>
+              <Input type="number" min={0} value={inputs.business30Clients} onChange={(e) => set("business30Clients", Number(e.target.value))} />
             </div>
             <div>
               <Label>Unlimited Clients ($4,000/mo ea)</Label>
@@ -112,7 +112,7 @@ export function RevenueCalculator({ remainingGoalCents }: { remainingGoalCents: 
                 <div key={s.id} className="flex items-center justify-between rounded-lg bg-navy-50 px-3 py-2">
                   <button onClick={() => setInputs(s.inputs)} className="text-sm font-medium text-navy-700 hover:text-accent-600">{s.name}</button>
                   <button
-                    onClick={async () => { await deleteScenario(s.id); setScenarios((prev) => prev.filter((x) => x.id !== s.id)); }}
+                    onClick={async () => { await deleteScenario(s.id); setScenarios((prev: any) => prev.filter((x: any) => x.id !== s.id)); }}
                     className="text-navy-300 hover:text-danger-600"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -135,7 +135,7 @@ export function RevenueCalculator({ remainingGoalCents }: { remainingGoalCents: 
             label="Time to Close Gap at This Pace"
             value={Number.isFinite(results.monthsToCloseGap) ? `${results.monthsToCloseGap.toFixed(1)} months` : "—"}
           />
-          <ResultRow label="Or ~ Additional Business-20 Clients Needed" value={String(results.additionalBusiness20Needed)} />
+          <ResultRow label="Or ~ Additional Business 30 Clients Needed" value={String(results.additionalBusiness30Needed)} />
           <ResultRow label="Or ~ Additional Individual Appointments Needed" value={String(results.additionalIndividualNeeded)} />
         </CardBody>
       </Card>

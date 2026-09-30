@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { DndContext, useDraggable, useDroppable, DragEndEvent, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
-import { Plus, Calendar } from "lucide-react";
+import { Plus, Calendar, PhoneCall, ArrowRight } from "lucide-react";
 import { PIPELINE_STAGES, PIPELINE_STAGE_LABELS, BUSINESS_CATEGORY_LABELS } from "@/lib/constants";
 import { updateOpportunityStage } from "@/lib/actions/pipeline";
 import { formatCents } from "@/lib/money";
@@ -20,6 +20,8 @@ export interface OpportunityView {
   potentialMonthlyCents: number;
   probability: number;
   expectedCloseDate: Date | null;
+  nextAction: string;
+  contactAttempts: number;
 }
 
 function OpportunityCard({ opp }: { opp: OpportunityView }) {
@@ -45,11 +47,19 @@ function OpportunityCard({ opp }: { opp: OpportunityView }) {
         <span className="font-semibold text-navy-700">{formatCents(opp.potentialMonthlyCents, { showCents: false })}/mo</span>
         <span className="rounded-full bg-accent-100 px-2 py-0.5 font-semibold text-accent-700">{opp.probability}%</span>
       </div>
-      {opp.expectedCloseDate && (
-        <p className="mt-2 flex items-center gap-1 text-[11px] text-navy-400">
-          <Calendar className="h-3 w-3" /> {formatDate(opp.expectedCloseDate)}
+      {opp.nextAction && (
+        <p className="mt-2 flex items-start gap-1 text-[11px] text-navy-500">
+          <ArrowRight className="mt-0.5 h-3 w-3 shrink-0 text-accent-500" /> {opp.nextAction}
         </p>
       )}
+      <div className="mt-2 flex items-center justify-between text-[11px] text-navy-400">
+        {opp.expectedCloseDate ? (
+          <span className="flex items-center gap-1"><Calendar className="h-3 w-3" /> {formatDate(opp.expectedCloseDate)}</span>
+        ) : <span />}
+        {opp.contactAttempts > 0 && (
+          <span className="flex items-center gap-1"><PhoneCall className="h-3 w-3" /> {opp.contactAttempts}</span>
+        )}
+      </div>
     </div>
   );
 }
@@ -82,11 +92,16 @@ export function PipelineBoard({ opportunities }: { opportunities: OpportunityVie
     if (!over) return;
     const newStage = String(over.id);
     const oppId = String(active.id);
-    const current = items.find((i) => i.id === oppId);
+    const current = items.find((i: any) => i.id === oppId);
     if (!current || current.stage === newStage) return;
 
-    setItems((prev) => prev.map((i) => (i.id === oppId ? { ...i, stage: newStage } : i)));
-    const res = await updateOpportunityStage(oppId, newStage);
+    let lostReason: string | undefined;
+    if (newStage === "lost") {
+      lostReason = window.prompt(`Why was ${current.businessName} lost? (optional)`) ?? "";
+    }
+
+    setItems((prev: any) => prev.map((i: any) => (i.id === oppId ? { ...i, stage: newStage } : i)));
+    const res = await updateOpportunityStage(oppId, newStage, lostReason);
     if (res.success) router.refresh();
   }
 
@@ -97,8 +112,8 @@ export function PipelineBoard({ opportunities }: { opportunities: OpportunityVie
       </div>
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
         <div className="themed-scroll flex gap-4 overflow-x-auto pb-4">
-          {PIPELINE_STAGES.map((stage) => (
-            <Column key={stage} stage={stage} opportunities={items.filter((i) => i.stage === stage)} />
+          {PIPELINE_STAGES.map((stage: any) => (
+            <Column key={stage} stage={stage} opportunities={items.filter((i: any) => i.stage === stage)} />
           ))}
         </div>
       </DndContext>

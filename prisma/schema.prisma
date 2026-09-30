@@ -1,15 +1,13 @@
 // Notar-E Services — Database Schema
-// Default provider is SQLite for zero-config local development.
-// To deploy on Supabase/PostgreSQL, change `provider` below to "postgresql"
-// and set DATABASE_URL to your Postgres connection string — no model
-// changes are required (see README.md "Deploying to Postgres/Supabase").
+// Production datasource is PostgreSQL (Supabase). See README.md for local
+// development setup (a local Postgres instance or a free Supabase project).
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -55,11 +53,17 @@ model BusinessSettings {
   heroHeadline         String   @default("Notarization Made Simple.")
   heroSubheadline      String   @default("Professional Michigan notary services — when and where you need them.")
 
-  // Daily scorecard targets
+  // Daily scorecard / outreach targets
   targetBusinessesContacted Int @default(20)
   targetCalls               Int @default(10)
   targetEmails               Int @default(10)
   targetFollowUps           Int @default(5)
+
+  // Invoicing
+  taxRatePercent       Float    @default(0)
+
+  // Stripe pricing configuration
+  business30IncludedAppointments Int @default(30)
 
   setupCompleted       Boolean  @default(false)
   demoDataSeeded       Boolean  @default(true)
@@ -79,6 +83,16 @@ model BlackoutDate {
   id     String   @id @default(cuid())
   date   DateTime
   reason String   @default("")
+}
+
+// Admin-created manual holds on the calendar (e.g. "out of office 2-4pm") —
+// these occupy slots the same way appointments do, without being a booking.
+model AdminBlock {
+  id        String   @id @default(cuid())
+  startTime DateTime
+  endTime   DateTime
+  reason    String   @default("")
+  createdAt DateTime @default(now())
 }
 
 // ---------- Pricing (editable in admin) ----------
@@ -123,35 +137,81 @@ model Client {
   leadStatus           String    @default("new_lead") // new_lead|contacted|interested|proposal_sent|active_client|recurring_client|inactive|lost
   leadSource           String    @default("website")
   isDemo               Boolean   @default(false)
+
+  // Stripe subscription tracking
+  stripeCustomerId    String    @default("")
+  stripeSubscriptionId String   @default("")
+  currentPlanKey      String    @default("") // individual | business30 | unlimited
+  subscriptionStatus  String    @default("") // active | past_due | canceled | incomplete
+  nextBillingDate     DateTime?
+  monthlyUsageCount   Int       @default(0) // for business30 plan
+  monthlyUsageResetDate DateTime?
+
+  // Stripe billing cycle (from Stripe subscription)
+  currentPeriodStart  DateTime?
+  currentPeriodEnd    DateTime?
+
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 
   appointments Appointment[]
   invoices     Invoice[]
+  subscriptionEvents SubscriptionEvent[]
+  accessSessions ClientAccessSession[]
+  usageRecords ClientUsage[]
+  businessClients BusinessClient[]
 }
 
 model Business {
-  id                String    @id @default(cuid())
-  companyName       String
-  category          String    // title_company|mortgage_company|real_estate_brokerage|real_estate_agent|law_firm|property_management|dealership|bank_credit_union|healthcare|senior_living|small_business|other
-  contactName       String    @default("")
-  email             String    @default("")
-  phone             String    @default("")
-  packageKey        String    @default("") // links to PricingPlan.key
-  monthlyUsage      Int       @default(0)
-  monthlyRevenueCents Int     @default(0)
-  contractStart     DateTime?
-  renewalDate       DateTime?
-  status            String    @default("lead") // lead|active|inactive
-  notes             String    @default("")
-  followUpDate      DateTime?
-  leadSource        String    @default("outreach")
-  isDemo            Boolean   @default(false)
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  id                  String    @id @default(cuid())
+  companyName         String
+  category            String    // title_company|mortgage_company|real_estate_brokerage|real_estate_agent|law_firm|property_management|dealership|bank_credit_union|healthcare|senior_living|small_business|other
+  contactName         String    @default("")
+  email               String    @default("")
+  phone               String    @default("")
 
-  appointments Appointment[]
-  invoices     Invoice[]
+  // Billing contact (may differ from primary contact)
+  billingContactName  String    @default("")
+  billingContactEmail String    @default("")
+  billingContactPhone String    @default("")
+
+  packageKey          String    @default("") // links to PricingPlan.key
+  monthlyUsage        Int       @default(0)
+  monthlyRevenueCents Int       @default(0)
+  expectedMonthlyVolume Int     @default(0) // appointments/month expected, captured at inquiry
+  customPricingNotes  String    @default("") // free-text custom pricing agreement notes
+
+  contractStart       DateTime?
+  contractEndDate     DateTime?
+  renewalDate         DateTime?
+  status              String    @default("lead") // lead|active|inactive
+  notes               String    @default("")
+  followUpDate        DateTime?
+  leadSource          String    @default("outreach")
+  isDemo              Boolean   @default(false)
+
+  // Stripe subscription tracking
+  stripeCustomerId    String    @default("")
+  stripeSubscriptionId String   @default("")
+  currentPlanKey      String    @default("") // business30 | unlimited
+  subscriptionStatus  String    @default("") // active | past_due | canceled | incomplete
+  nextBillingDate     DateTime?
+  monthlyUsageCount   Int       @default(0) // for business30 plan
+  monthlyUsageResetDate DateTime?
+
+  // Stripe billing cycle (from Stripe subscription)
+  currentPeriodStart  DateTime?
+  currentPeriodEnd    DateTime?
+
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  appointments  Appointment[]
+  invoices      Invoice[]
+  opportunities PipelineOpportunity[]
+  subscriptionEvents SubscriptionEvent[]
+  usageRecords  BusinessUsage[]
+  clientMembers BusinessClient[]
 }
 
 // ---------- Scheduling ----------
@@ -161,13 +221,15 @@ model Appointment {
   confirmationNumber String    @unique
   type               String    @default("in_person") // in_person | remote
   status             String    @default("scheduled")  // scheduled|completed|cancelled|no_show
-  paymentStatus      String    @default("unpaid")      // unpaid|paid
+  paymentStatus      String    @default("unpaid")      // unpaid|pending|partially_paid|paid|refunded|failed
   paymentMethod      String    @default("")             // card|cash|check|invoice|ach
 
   clientId   String?
   client     Client?   @relation(fields: [clientId], references: [id])
   businessId String?
   business   Business? @relation(fields: [businessId], references: [id])
+  invoiceId  String?
+  invoice    Invoice?  @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
 
   clientName  String
   company     String   @default("")
@@ -183,12 +245,14 @@ model Appointment {
   travelFeeCents    Int @default(0)
   otherFeesCents    Int @default(0)
   totalAmountCents  Int @default(1000)
+  amountPaidCents   Int @default(0)
 
   scheduledStart DateTime
   scheduledEnd   DateTime
 
   notes         String    @default("")
   followUpDate  DateTime?
+  reminderSentAt DateTime?
 
   isRecurring    Boolean @default(false)
   recurrenceRule String  @default("") // "weekly" | "biweekly" | "monthly"
@@ -196,11 +260,15 @@ model Appointment {
   source String @default("admin") // admin | public_booking
   isDemo Boolean @default(false)
 
+  stripeCheckoutSessionId String @default("")
+  stripePaymentIntentId   String @default("")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   revenueEntries RevenueEntry[]
   mileageLogs    MileageLog[]
+  payments       Payment[]
 }
 
 // ---------- Sales pipeline & outreach ----------
@@ -210,15 +278,23 @@ model PipelineOpportunity {
   businessName        String
   contactName         String    @default("")
   category            String    @default("other")
-  stage               String    @default("lead") // lead|contacted|meeting_scheduled|proposal_sent|negotiating|won|lost
+  stage               String    @default("new_lead") // new_lead|contacted|follow_up|interested|meeting_scheduled|proposal_sent|negotiating|won|lost
   potentialMonthlyCents Int     @default(0)
+  dealValueCents      Int       @default(0) // one-time / contract value, distinct from recurring monthly potential
   probability         Int       @default(20)
+  nextAction          String    @default("")
+  nextFollowUpDate    DateTime?
+  contactAttempts     Int       @default(0)
+  lostReason          String    @default("")
   expectedCloseDate   DateTime?
   notes               String    @default("")
   sortOrder           Int       @default(0)
   isDemo              Boolean   @default(false)
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
+
+  businessId String?
+  business   Business? @relation(fields: [businessId], references: [id])
 }
 
 model OutreachLog {
@@ -229,7 +305,7 @@ model OutreachLog {
   email        String    @default("")
   companyType  String    @default("other")
   dateContacted DateTime @default(now())
-  method       String    @default("call") // call|email|text|in_person
+  method       String    @default("call") // call|email|text|walk_in|linkedin|referral|meeting|proposal
   response     String    @default("no_response") // no_response|interested|not_interested|callback|voicemail
   followUpDate DateTime?
   notes        String    @default("")
@@ -260,10 +336,12 @@ model RevenueEntry {
   id            String   @id @default(cuid())
   date          DateTime @default(now())
   amountCents   Int
-  source        String   @default("manual") // manual|appointment|subscription|invoice
+  source        String   @default("manual") // manual|appointment|subscription|invoice|refund
   description   String   @default("")
   appointmentId String?
   appointment   Appointment? @relation(fields: [appointmentId], references: [id])
+  invoiceId     String?
+  invoice       Invoice? @relation(fields: [invoiceId], references: [id])
   isDemo        Boolean  @default(false)
   createdAt     DateTime @default(now())
 }
@@ -303,15 +381,26 @@ model Invoice {
   business      Business? @relation(fields: [businessId], references: [id])
   clientName    String
   company       String   @default("")
+  email         String   @default("")
   issueDate     DateTime @default(now())
   dueDate       DateTime
-  status        String   @default("draft") // draft|sent|paid|overdue|cancelled
+  status        String   @default("draft") // draft|sent|paid|partially_paid|overdue|cancelled|refunded
+  taxCents      Int      @default(0)
+  amountPaidCents Int    @default(0)
   notes         String   @default("")
   isDemo        Boolean  @default(false)
+
+  stripePaymentLinkUrl    String @default("")
+  stripeCheckoutSessionId String @default("")
+
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  items InvoiceItem[]
+  items         InvoiceItem[]
+  payments      Payment[]
+  revenueEntries RevenueEntry[]
+  usageRecords  BusinessUsage[] // Overage appointments included in this invoice
+  appointments  Appointment[]    // Appointments associated with this invoice
 }
 
 model InvoiceItem {
@@ -323,6 +412,34 @@ model InvoiceItem {
   quantity       Int     @default(1)
   unitAmountCents Int
   amountCents    Int
+}
+
+// A single payment/refund event — powers partial payments, receipts, and
+// the admin refund flow. Linked to either an Appointment or an Invoice.
+model Payment {
+  id            String   @id @default(cuid())
+  appointmentId String?
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  invoiceId     String?
+  invoice       Invoice? @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  amountCents   Int
+  method        String   @default("stripe") // stripe|cash|check|ach|other
+  status        String   @default("succeeded") // pending|succeeded|refunded|failed
+
+  stripePaymentIntentId String? @unique   // Unique constraint prevents duplicate charges
+  stripeChargeId        String   @default("")
+  stripeRefundId         String   @default("")
+  stripeCheckoutSessionId String? @unique // Unique constraint prevents duplicate checkouts
+  stripeCustomerId      String   @default("")
+
+  paidAt        DateTime?
+
+  createdAt     DateTime @default(now())
+
+  // Unique constraints on non-null Stripe identifiers
+  @@index([appointmentId])
+  @@index([invoiceId])
 }
 
 // ---------- Growth tools ----------
@@ -341,14 +458,47 @@ model MilestoneAchievement {
   seen        Boolean  @default(false)
 }
 
+// Track subscription lifecycle events for idempotency
+model SubscriptionEvent {
+  id                  String    @id @default(cuid())
+  stripeEventId       String    @unique // Stripe Event ID for deduplication
+  eventType           String    // customer.subscription.created | updated | deleted
+  stripeSubscriptionId String
+
+  clientId            String?
+  client              Client?   @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  businessId          String?
+  business            Business? @relation(fields: [businessId], references: [id], onDelete: SetNull)
+
+  dataSnapshot        String    // JSON snapshot of the event for debugging
+  processed           Boolean   @default(true)
+  createdAt           DateTime  @default(now())
+}
+
 model Notification {
   id        String   @id @default(cuid())
-  type      String   // appointment_upcoming|follow_up_due|invoice_unpaid|goal_milestone|renewal|new_booking
+  type      String   // appointment_upcoming|follow_up_due|invoice_unpaid|goal_milestone|renewal|new_booking|payment_received
   title     String
   body      String   @default("")
   link      String   @default("")
   isRead    Boolean  @default(false)
   createdAt DateTime @default(now())
+}
+
+// Client portal access sessions (temporary codes for magic link login)
+model ClientAccessSession {
+  id            String   @id @default(cuid())
+  clientId      String
+  client        Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  email         String   // For validation — must match client email
+  codeHash      String   // Hashed access code
+
+  expiresAt     DateTime
+  usedAt        DateTime?
+  ipAddress     String   @default("")
+
+  createdAt     DateTime @default(now())
 }
 
 model LeadCapture {
@@ -358,9 +508,89 @@ model LeadCapture {
   email              String
   phone              String  @default("")
   serviceNeeded      String  @default("")
+  businessCategory   String  @default("")
   message            String  @default("")
   estimatedAppointmentsPerMonth String @default("")
   isBusinessLead     Boolean  @default(false)
   handled            Boolean  @default(false)
   createdAt          DateTime @default(now())
+}
+
+// ---------- Subscription usage tracking ----------
+
+// Business subscription usage (for overage billing on Business30)
+model BusinessUsage {
+  id                      String   @id @default(cuid())
+  businessId              String
+  business                Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+
+  appointmentId           String   @unique // Unique: each appointment counted only once
+
+  stripeSubscriptionId    String   // Track which subscription this is for
+  billingPeriodStart      DateTime // Stripe billing period start
+  billingPeriodEnd        DateTime // Stripe billing period end
+
+  isOverage               Boolean  @default(false)
+  overageAmountCents      Int      @default(0) // $50 per overage appointment
+
+  // BILLING STATE: Track whether this overage has been invoiced
+  billingStatus           String   @default("unbilled") // unbilled | invoiced | failed
+  invoiceId               String?  // Reference to the invoice that included this overage
+  invoice                 Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  invoicedAt              DateTime? // When this overage was included in an invoice
+  stripeInvoiceItemId     String   @default("") // Stripe invoice item ID if synced
+
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  @@index([businessId])
+  @@index([stripeSubscriptionId])
+  @@index([billingPeriodStart, billingPeriodEnd])
+  // CRITICAL INDEX: Find unbilled overages in current period
+  @@index([billingStatus, billingPeriodStart, billingPeriodEnd])
+  // CRITICAL INDEX: Prevent concurrent double-billing
+  @@index([invoiceId])
+}
+
+// Client subscription usage (for individual appointments)
+model ClientUsage {
+  id                      String   @id @default(cuid())
+  clientId                String
+  client                  Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  appointmentId           String   @unique // Unique: each appointment counted only once
+
+  stripePaymentIntentId   String   @default("") // For deduplication
+
+  amountPaidCents         Int      // Actual amount paid for this appointment
+  paymentStatus           String   @default("") // succeeded | failed | refunded
+
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  @@index([clientId])
+  @@index([stripePaymentIntentId])
+}
+
+// Business-Client authorization relationship
+// Tracks which clients can manage which businesses
+model BusinessClient {
+  id         String   @id @default(cuid())
+  businessId String
+  clientId   String
+
+  role       String   @default("member") // owner | admin | member | viewer
+
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  client     Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Prevent duplicate relationships
+  @@unique([businessId, clientId])
+
+  // Indexes for efficient querying
+  @@index([clientId])
+  @@index([businessId])
 }

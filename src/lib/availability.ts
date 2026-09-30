@@ -1,4 +1,7 @@
 import { prisma } from "./db";
+import type { Prisma, PrismaClient } from "@prisma/client";
+
+type Db = PrismaClient | Prisma.TransactionClient;
 
 function toMinutes(hhmm: string) {
   const [h, m] = hhmm.split(":").map(Number);
@@ -18,8 +21,13 @@ export interface SlotOption {
   label: string; // "9:00 AM"
 }
 
-export async function getOpenSlotsForDate(dateISO: string): Promise<SlotOption[]> {
-  const settings = await prisma.businessSettings.findUnique({ where: { id: "default" } });
+/**
+ * Computes open booking slots for a date. Accepts an optional Prisma client
+ * so callers can run this inside a transaction (see submitBooking) to close
+ * the race window between "check availability" and "create appointment."
+ */
+export async function getOpenSlotsForDate(dateISO: string, db: Db = prisma): Promise<SlotOption[]> {
+  const settings = await db.businessSettings.findUnique({ where: { id: "default" } });
   if (!settings || settings.vacationMode) return [];
 
   const date = new Date(`${dateISO}T00:00:00`);
@@ -30,18 +38,14 @@ export async function getOpenSlotsForDate(dateISO: string): Promise<SlotOption[]
   if (date.getTime() - now.getTime() > maxAdvanceMs) return [];
   if (date.getTime() < now.getTime() - 24 * 60 * 60 * 1000) return [];
 
-  const blackout = await prisma.blackoutDate.findFirst({
-    where: {
-      date: {
-        gte: new Date(`${dateISO}T00:00:00`),
-        lt: new Date(`${dateISO}T23:59:59`),
-      },
-    },
-  });
+  const dayStart = new Date(`${dateISO}T00:00:00`);
+  const dayEnd = new Date(`${dateISO}T23:59:59`);
+
+  const blackout = await db.blackoutDate.findFirst({ where: { date: { gte: dayStart, lt: dayEnd } } });
   if (blackout) return [];
 
   const dayOfWeek = date.getDay();
-  const rule = await prisma.availabilityRule.findFirst({ where: { dayOfWeek, isActive: true } });
+  const rule = await db.availabilityRule.findFirst({ where: { dayOfWeek, isActive: true } });
   if (!rule) return [];
 
   const duration = settings.appointmentDurationMinutes;
@@ -49,13 +53,20 @@ export async function getOpenSlotsForDate(dateISO: string): Promise<SlotOption[]
   const startMin = toMinutes(rule.startTime);
   const endMin = toMinutes(rule.endTime);
 
-  const existing = await prisma.appointment.findMany({
-    where: {
-      scheduledStart: { gte: new Date(`${dateISO}T00:00:00`), lt: new Date(`${dateISO}T23:59:59`) },
-      status: { not: "cancelled" },
-    },
-    select: { scheduledStart: true, scheduledEnd: true },
-  });
+  const [existingAppointments, existingBlocks] = await Promise.all([
+    db.appointment.findMany({
+      where: { scheduledStart: { gte: dayStart, lt: dayEnd }, status: { not: "cancelled" } },
+      select: { scheduledStart: true, scheduledEnd: true },
+    }),
+    db.adminBlock.findMany({
+      where: { startTime: { lt: dayEnd }, endTime: { gt: dayStart } },
+      select: { startTime: true, endTime: true },
+    }),
+  ]);
+  const occupied = [
+    ...existingAppointments.map((a: any) => ({ start: a.scheduledStart, end: a.scheduledEnd })),
+    ...existingBlocks.map((b: any) => ({ start: b.startTime, end: b.endTime })),
+  ];
 
   const slots: SlotOption[] = [];
   for (let t = startMin; t + duration <= endMin; t += duration + buffer) {
@@ -65,9 +76,9 @@ export async function getOpenSlotsForDate(dateISO: string): Promise<SlotOption[]
 
     if (slotStart.getTime() < now.getTime() + minNoticeMs) continue;
 
-    const overlaps = existing.some((a) => {
-      const bufferedStart = new Date(a.scheduledStart.getTime() - buffer * 60000);
-      const bufferedEnd = new Date(a.scheduledEnd.getTime() + buffer * 60000);
+    const overlaps = occupied.some((a: any) => {
+      const bufferedStart = new Date(a.start.getTime() - buffer * 60000);
+      const bufferedEnd = new Date(a.end.getTime() + buffer * 60000);
       return slotStart < bufferedEnd && slotEnd > bufferedStart;
     });
     if (overlaps) continue;

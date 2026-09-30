@@ -1,7 +1,9 @@
+import { Download } from "lucide-react";
 import { prisma } from "@/lib/db";
 import { Card, CardBody, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
+import { LinkButton } from "@/components/ui/button";
 import { AddRevenueForm } from "@/components/admin/add-revenue-form";
 import { RevenueCalculator } from "@/components/admin/revenue-calculator";
 import { getBusinessSettings } from "@/lib/settings";
@@ -38,7 +40,10 @@ export default async function RevenuePage() {
           <h1 className="text-2xl font-bold text-navy-900">Revenue</h1>
           <p className="mt-1 text-sm text-navy-400">Total earned: {formatCents(totalEarnedCents, { showCents: false })}</p>
         </div>
-        <AddRevenueForm />
+        <div className="flex gap-2">
+          <LinkButton href="/api/export/revenue" variant="outline"><Download className="h-4 w-4" /> Export CSV</LinkButton>
+          <AddRevenueForm />
+        </div>
       </div>
 
       <RevenueCalculator remainingGoalCents={goalStats.remainingCents} />

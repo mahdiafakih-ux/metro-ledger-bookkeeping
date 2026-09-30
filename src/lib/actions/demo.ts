@@ -2,8 +2,12 @@
 
 import { prisma } from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { requireAdminSession } from "@/lib/auth";
 
 export async function clearDemoData() {
+  const session = await requireAdminSession();
+  if (!session) return { success: false, error: "Unauthorized" };
+
   await prisma.revenueEntry.deleteMany({ where: { isDemo: true } });
   await prisma.mileageLog.deleteMany({ where: { isDemo: true } });
   await prisma.appointment.deleteMany({ where: { isDemo: true } });

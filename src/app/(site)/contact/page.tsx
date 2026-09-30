@@ -3,6 +3,12 @@ import { Mail, Phone, MapPin, Clock } from "lucide-react";
 import { ContactForm } from "@/components/site/contact-form";
 import { getBusinessSettings } from "@/lib/settings";
 
+// Reads admin-editable business settings from the database on every request
+// rather than baking them into the build — also keeps this off Next's
+// static prerender pass, which would otherwise run at build time (before a
+// database may even be reachable, e.g. a fresh Vercel deploy).
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "Contact Us",
   description: "Get in touch with Notar-E Services for individual or business notary needs across Michigan.",

@@ -22,7 +22,12 @@ export default async function OpportunityDetailPage({ params }: { params: Promis
             category: opp.category,
             stage: opp.stage,
             potentialMonthlyDollars: opp.potentialMonthlyCents / 100,
+            dealValueDollars: opp.dealValueCents / 100,
             probability: opp.probability,
+            nextAction: opp.nextAction,
+            nextFollowUpDate: opp.nextFollowUpDate ? opp.nextFollowUpDate.toISOString().slice(0, 10) : "",
+            contactAttempts: opp.contactAttempts,
+            lostReason: opp.lostReason,
             expectedCloseDate: opp.expectedCloseDate ? opp.expectedCloseDate.toISOString().slice(0, 10) : "",
             notes: opp.notes,
           }}
