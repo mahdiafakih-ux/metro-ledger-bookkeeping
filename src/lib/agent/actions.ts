@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/db";
 import { applyAppointmentStatus } from "@/lib/appointment-status";
 import { dateOnlyToUtc, detroitTodayISO, formatDetroitDateTime } from "@/lib/tz";
-import { appendNote, type AgentTargetType, type ValidatedAction } from "@/lib/agent/action-rules";
+import { appendNote, type AgentTargetType, type ValidatedTargetedAction } from "@/lib/agent/action-rules";
 
 /** Stored notes are capped so repeated appends can't grow a row without bound. */
 export const MAX_STORED_NOTES_CHARS = 20_000;
@@ -53,7 +53,7 @@ export async function findAgentTarget(type: AgentTargetType, targetId: string): 
 }
 
 /** What the operator should read back to the owner before confirming. */
-export function describePendingAction(target: AgentTarget, payload: ValidatedAction): string {
+export function describePendingAction(target: AgentTarget, payload: ValidatedTargetedAction): string {
   switch (payload.kind) {
     case "status":
       return `Change ${target.label} from ${target.status} to ${payload.data.status}?${
@@ -81,7 +81,7 @@ export interface ActionOutcome {
   result: Record<string, unknown>;
 }
 
-export async function executeAgentAction(target: AgentTarget, payload: ValidatedAction): Promise<ActionOutcome> {
+export async function executeAgentAction(target: AgentTarget, payload: ValidatedTargetedAction): Promise<ActionOutcome> {
   switch (payload.kind) {
     case "status": {
       const next = payload.data.status;

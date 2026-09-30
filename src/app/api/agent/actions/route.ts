@@ -6,6 +6,7 @@
 // Actions that materially change business state return
 //   { success: false, requiresConfirmation: true, confirmationPrompt }
 // (HTTP 200, nothing written) until repeated with "confirmed": true.
+// create_appointment always requires confirmation and never takes payment.
 // There are no delete, payment, Stripe, pricing, auth or settings actions.
 
 import type { NextRequest } from "next/server";
@@ -14,6 +15,8 @@ import { agentError, agentOk } from "@/lib/agent/respond";
 import { AGENT_ACTIONS, validateAgentAction } from "@/lib/agent/action-rules";
 import { AgentActionError, describePendingAction, executeAgentAction, findAgentTarget } from "@/lib/agent/actions";
 import { recordAgentAction } from "@/lib/agent/audit";
+import { runCreateAppointment } from "@/lib/agent/create-appointment";
+import { createAppointmentDeps } from "@/lib/agent/create-appointment-deps";
 
 const MAX_BODY_BYTES = 10_000;
 
@@ -49,6 +52,61 @@ export async function POST(request: NextRequest) {
       error: v.error,
     });
     return agentError(v.error, v.status);
+  }
+
+  if (v.payload.kind === "create") {
+    const { booking, start } = v.payload.data;
+    // Audit summary carries no client name, email, phone or address.
+    const auditWhat = `${booking.appointmentType} ${booking.serviceType} ${booking.date} ${booking.time}`;
+    try {
+      const outcome = await runCreateAppointment(booking, start, v.confirmed, createAppointmentDeps);
+      switch (outcome.kind) {
+        case "needs_confirmation":
+          return agentOk({
+            success: false,
+            requiresConfirmation: true,
+            action: v.action,
+            confirmationPrompt: outcome.prompt,
+            proposedAppointment: outcome.preview,
+            error: "Confirmation required. Read the prompt to the owner, then resend the same request with confirmed: true.",
+          });
+        case "created": {
+          const id = String(outcome.appointment.appointmentId);
+          await recordAgentAction({
+            action: v.action,
+            targetType: "appointment",
+            targetId: id,
+            summary: `created ${outcome.appointment.confirmationNumber}: ${auditWhat}`,
+            success: true,
+          });
+          return agentOk({ action: v.action, changed: true, message: outcome.message, appointment: outcome.appointment }, 201);
+        }
+        case "duplicate": {
+          if (v.confirmed) {
+            await recordAgentAction({
+              action: v.action,
+              targetType: "appointment",
+              targetId: String(outcome.appointment.appointmentId),
+              summary: `duplicate request, existing ${outcome.appointment.confirmationNumber} returned: ${auditWhat}`,
+              success: true,
+            });
+          }
+          return agentOk({ action: v.action, changed: false, duplicate: true, message: outcome.message, appointment: outcome.appointment });
+        }
+        case "unavailable":
+          if (v.confirmed) {
+            await recordAgentAction({ action: v.action, targetType: "appointment", targetId: "", summary: `slot unavailable: ${auditWhat}`, success: false, error: "unavailable" });
+          }
+          return agentError(outcome.message, 409, { availableTimes: outcome.alternatives });
+        case "failed":
+          await recordAgentAction({ action: v.action, targetType: "appointment", targetId: "", summary: `booking failed: ${auditWhat}`, success: false, error: outcome.message });
+          return agentError(outcome.message, 500);
+      }
+    } catch (error) {
+      console.error("Agent create_appointment error:", error instanceof Error ? error.message : error);
+      await recordAgentAction({ action: v.action, targetType: "appointment", targetId: "", summary: `booking error: ${auditWhat}`, success: false, error: "internal_error" });
+      return agentError("The appointment could not be created.", 500);
+    }
   }
 
   try {

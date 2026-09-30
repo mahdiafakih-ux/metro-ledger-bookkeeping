@@ -5,9 +5,11 @@
 import { z } from "zod";
 import { APPOINTMENT_STATUSES } from "@/lib/constants";
 import { addDaysISO, detroitTodayISO, parseDateISO } from "@/lib/tz";
+import type { BookingInput } from "@/lib/validation";
+import { normalizeBookingData } from "@/lib/agent/booking-input";
 
 export type AgentTargetType = "appointment" | "client" | "business";
-type ActionKind = "status" | "notes" | "follow_up";
+type ActionKind = "create" | "status" | "notes" | "follow_up";
 
 interface ActionDef {
   targetType: AgentTargetType;
@@ -16,6 +18,12 @@ interface ActionDef {
 }
 
 export const AGENT_ACTIONS = {
+  create_appointment: {
+    targetType: "appointment",
+    kind: "create",
+    description:
+      "Book a new unpaid appointment through the public booking rules. No targetId. data: clientName, email, phone, service, appointmentType (in_person|remote), date (YYYY-MM-DD), time (14:30 or 2:30 PM), documentType, numberOfActs?, address (required for in_person), company?, notes?. Always requires confirmed: true.",
+  },
   update_appointment_status: {
     targetType: "appointment",
     kind: "status",
@@ -64,7 +72,11 @@ export const MAX_FOLLOW_UP_DAYS_AHEAD = 730;
 
 const envelopeSchema = z.object({
   action: z.string().min(1).max(64),
-  targetId: z.string().trim().min(1).max(64).regex(/^[A-Za-z0-9_-]+$/, "targetId has invalid characters"),
+  // Empty/null targetId is treated as absent (voice tools often send every field).
+  targetId: z.preprocess(
+    (v) => (v === "" || v === null ? undefined : v),
+    z.string().trim().min(1).max(64).regex(/^[A-Za-z0-9_-]+$/, "targetId has invalid characters").optional()
+  ),
   data: z.record(z.string(), z.unknown()).optional().default({}),
   confirmed: z.boolean().optional().default(false),
 });
@@ -76,7 +88,10 @@ const notesData = z.strictObject({
 });
 const followUpData = z.strictObject({ date: z.union([z.string(), z.null()]) });
 
+export type ValidatedTargetedAction = Exclude<ValidatedAction, { kind: "create" }>;
+
 export type ValidatedAction =
+  | { kind: "create"; data: { booking: BookingInput; start: Date } }
   | { kind: "status"; data: { status: (typeof APPOINTMENT_STATUSES)[number] } }
   | { kind: "notes"; data: { notes: string; mode: "append" | "replace" } }
   | { kind: "follow_up"; data: { date: string | null } };
@@ -118,7 +133,20 @@ export function validateAgentAction(body: unknown, now: Date = new Date()): Vali
   let payload: ValidatedAction;
   let needsConfirmation: boolean;
 
+  if (def.kind === "create") {
+    if (targetId !== undefined) return { ok: false, status: 400, action, error: "create_appointment does not take a targetId." };
+  } else if (targetId === undefined) {
+    return { ok: false, status: 400, action, error: "targetId is required for this action." };
+  }
+
   switch (def.kind) {
+    case "create": {
+      const n = normalizeBookingData(data, now);
+      if (!n.ok) return { ok: false, status: 400, action, error: n.error };
+      payload = { kind: "create", data: { booking: n.booking, start: n.start } };
+      needsConfirmation = true;
+      break;
+    }
     case "status": {
       const p = statusData.safeParse(data);
       if (!p.success) return { ok: false, status: 400, action, error: firstIssue(p.error) };
@@ -151,7 +179,7 @@ export function validateAgentAction(body: unknown, now: Date = new Date()): Vali
     }
   }
 
-  return { ok: true, action, targetType: def.targetType, targetId, confirmed, needsConfirmation, payload };
+  return { ok: true, action, targetType: def.targetType, targetId: targetId ?? "", confirmed, needsConfirmation, payload };
 }
 
 /** Append a dated operator note, keeping the existing text intact. */
