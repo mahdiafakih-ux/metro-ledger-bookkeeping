@@ -62,7 +62,16 @@ test("actions: unsupported and dangerous actions are rejected", () => {
     assert.equal(v.ok, false, action);
     if (!v.ok) assert.match(v.error, /Unsupported action/);
   }
-  assert.equal(Object.keys(AGENT_ACTIONS).length, 7);
+  assert.deepEqual(Object.keys(AGENT_ACTIONS).sort(), [
+    "create_appointment",
+    "set_appointment_follow_up",
+    "set_business_follow_up",
+    "set_client_follow_up",
+    "update_appointment_notes",
+    "update_appointment_status",
+    "update_business_notes",
+    "update_client_notes",
+  ]);
 });
 
 test("actions: envelope and data are strictly validated", () => {
